@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.capstone.etp</groupId>
+    <artifactId>domain</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <packaging>jar</packaging>
+
+    <name>ETP Domain Module</name>
+    <description>
+        Pure domain module for the Enterprise Trading Platform. Only non-test
+        dependency is jakarta.validation-api, since Bean Validation annotations
+        are declarations rather than behaviour. Spring, servlet APIs, JDBC
+        drivers, MyBatis, and connection pools are forbidden here (and enforced
+        via maven-enforcer-plugin below).
+    </description>
+
+    <properties>
+        <maven.compiler.release>21</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <junit.version>5.11.0</junit.version>
+    </properties>
+
+    <dependencies>
+        <!-- The one and only non-test dependency allowed -->
+        <dependency>
+            <groupId>jakarta.validation</groupId>
+            <artifactId>jakarta.validation-api</artifactId>
+            <version>3.1.0</version>
+        </dependency>
+
+        <!-- Test-only dependency -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.13.0</version>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.3.1</version>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <version>3.5.0</version>
+                <executions>
+                    <execution>
+                        <id>enforce-no-forbidden-deps</id>
+                        <phase>validate</phase>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <bannedDependencies>
+                                    <excludes>
+                                        <exclude>org.springframework</exclude>
+                                        <exclude>org.springframework.boot</exclude>
+                                        <exclude>org.springframework.data</exclude>
+                                        <exclude>javax.servlet</exclude>
+                                        <exclude>jakarta.servlet</exclude>
+                                        <exclude>mysql</exclude>
+                                        <exclude>com.mysql</exclude>
+                                        <exclude>org.postgresql</exclude>
+                                        <exclude>com.h2database</exclude>
+                                        <exclude>org.mariadb.jdbc</exclude>
+                                        <exclude>com.microsoft.sqlserver</exclude>
+                                        <exclude>org.mybatis</exclude>
+                                        <exclude>com.zaxxer:HikariCP</exclude>
+                                        <exclude>org.apache.commons:commons-dbcp2</exclude>
+                                        <exclude>org.apache.tomcat:tomcat-jdbc</exclude>
+                                        <exclude>com.mchange:c3p0</exclude>
+                                    </excludes>
+                                    <searchTransitive>true</searchTransitive>
+                                    <message>
+                                        Domain module may only depend on jakarta.validation-api (plus test scope).
+                                        Spring, servlet APIs, JDBC drivers, MyBatis, and connection pools belong
+                                        in an infrastructure module, not here. Remove the offending dependency
+                                        or move this code out of the domain module.
+                                    </message>
+                                </bannedDependencies>
+                            </rules>
+                            <fail>true</fail>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>
