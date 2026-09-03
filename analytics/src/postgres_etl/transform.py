@@ -15,7 +15,7 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 VALID_SIDES    = {"BUY", "SELL"}
-VALID_STATUSES = {"NEW", "OPEN", "RECEIVED", "FILLED", "CANCELLED", "REJECTED"}
+VALID_STATUSES = {"NEW", "FILLED", "CANCELLED", "REJECTED"}
 
 
 # ---------------------------------------------------------------------------
