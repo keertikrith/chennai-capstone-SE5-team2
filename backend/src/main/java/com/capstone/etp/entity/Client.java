@@ -3,6 +3,7 @@ package com.capstone.etp.entity;
 import com.capstone.etp.enums.ClientStatus;
 import com.capstone.etp.enums.Gender;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Pattern;
 import lombok.*;
 
 import java.time.LocalDate;
@@ -32,6 +33,8 @@ public class Client {
     @Column(nullable = false)
     private String passwordHash;
 
+    @Column(length = 10)
+    @Pattern(regexp = "\\d{10}")
     private String phone;
 
     private LocalDate dateOfBirth;
