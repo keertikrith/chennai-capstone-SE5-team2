@@ -1,4 +1,7 @@
+
 BEGIN;
+
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 
 DROP TYPE IF EXISTS transaction_status_enum CASCADE;
@@ -25,7 +28,8 @@ CREATE TYPE client_status_enum AS ENUM (
 );
 
 CREATE TYPE account_type_enum AS ENUM (
-    'EQUITY',
+     'US_EQUITY',
+    'INDIAN_EQUITY',
     'FOREX',
     'CRYPTO'
 );
@@ -67,8 +71,6 @@ CREATE TYPE transaction_status_enum AS ENUM (
 );
 
 
-
-
 DROP TABLE IF EXISTS
     transactions,
     orders,
@@ -77,7 +79,8 @@ DROP TABLE IF EXISTS
     portfolios,
     account_preferences,
     accounts,
-    clients
+    clients,
+    watchlist
 CASCADE;
 
 
@@ -276,18 +279,19 @@ ON portfolio_holdings(instrument_id);
 
 
 CREATE TABLE orders (
-    id                  BIGSERIAL PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     account_id          BIGINT NOT NULL
                             REFERENCES accounts(id)
                             ON DELETE RESTRICT,
     instrument_id       BIGINT NOT NULL
                             REFERENCES instruments(id)
                             ON DELETE RESTRICT,
-    idempotency_key     TEXT NOT NULL UNIQUE,
+    idempotency_key     UUID NOT NULL DEFAULT gen_random_uuid(),
     order_type          order_type_enum NOT NULL,
     quantity            INTEGER NOT NULL,
     limit_price               NUMERIC(10,2),
     status              order_status_enum NOT NULL DEFAULT 'NEW',
+    reason              TEXT,
     created_at          TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     terminal_at         TIMESTAMPTZ,
 
@@ -322,13 +326,14 @@ CREATE TABLE orders (
 -- TRANSACTIONS
 
 CREATE TABLE transactions (
-    id              BIGSERIAL PRIMARY KEY,
-    order_id        BIGINT NOT NULL UNIQUE
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    order_id        UUID NOT NULL UNIQUE
                         REFERENCES orders(id)
                         ON DELETE RESTRICT,
     quantity        INTEGER NOT NULL,
     executed_price           NUMERIC(10,2) NOT NULL,
     status          transaction_status_enum NOT NULL,
+    reason              TEXT,
     executed_at     TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
 
@@ -338,6 +343,25 @@ CREATE TABLE transactions (
 
     CONSTRAINT ck_transactions_price
         CHECK(executed_price > 0)
+);
+
+
+-- ---------------------------------------------------------------------
+-- WATCHLIST
+-- ---------------------------------------------------------------------
+
+CREATE TABLE watchlist (
+    account_id     BIGINT NOT NULL
+                       REFERENCES accounts(id)
+                       ON DELETE RESTRICT,
+
+    instrument_id  BIGINT NOT NULL
+                       REFERENCES instruments(id)
+                       ON DELETE RESTRICT,
+
+    added_at       TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    PRIMARY KEY (account_id, instrument_id)
 );
 
 
