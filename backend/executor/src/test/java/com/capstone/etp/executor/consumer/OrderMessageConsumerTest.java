@@ -21,8 +21,9 @@ class OrderMessageConsumerTest {
                 {
                   "eventId":"evt-1",
                   "eventType":"ORDER_PLACED",
-                  "occurredAt":"2026-09-16T10:00:00Z",
+                  "eventTime":"2026-09-16T10:00:00Z",
                   "source":"trade-api",
+                  "schemaVersion":1,
                   "futureField":"ignore-me",
                   "payload":{"orderId":"%s","newPayloadField":"ignore-me-too"}
                 }
@@ -43,5 +44,24 @@ class OrderMessageConsumerTest {
                 """);
 
         verify(service, never()).handleOrderPlaced(Mockito.any());
+    }
+
+    @Test
+    void acceptsOccurredAtAliasForCompatibility() {
+        OrderExecutionService service = Mockito.mock(OrderExecutionService.class);
+        OrderMessageConsumer consumer = new OrderMessageConsumer(service);
+        UUID orderId = UUID.randomUUID();
+
+        consumer.onMessage("""
+                {
+                  "eventId":"evt-2",
+                  "eventType":"ORDER_PLACED",
+                  "occurredAt":"2026-09-16T10:00:00Z",
+                  "source":"trade-api",
+                  "payload":{"orderId":"%s"}
+                }
+                """.formatted(orderId));
+
+        verify(service).handleOrderPlaced(orderId);
     }
 }

@@ -71,7 +71,10 @@ class OrderExecutionWithMockedQuoteSourceTest {
                 .thenReturn(1);
 
         server.enqueue(new MockResponse().setResponseCode(200).setBody("""
-                {"symbol":"AAPL","bid":100.00,"ask":100.50,"price":100.25}
+                {
+                  "data":{"symbol":"AAPL","bid":100.00,"ask":100.50,"price":100.25},
+                  "meta":{"stale":false}
+                }
                 """).addHeader("Content-Type", "application/json"));
         service.handleOrderPlaced(fillOrderId);
         assertLastStatus(fillOrderId, OrderStatus.FILLED);
@@ -82,7 +85,10 @@ class OrderExecutionWithMockedQuoteSourceTest {
                 .thenReturn(1);
 
         server.enqueue(new MockResponse().setResponseCode(200).setBody("""
-                {"symbol":"AAPL","bid":100.00,"ask":100.50,"price":100.25}
+                {
+                  "data":{"symbol":"AAPL","bid":100.00,"ask":100.50,"price":100.25},
+                  "meta":{"stale":false}
+                }
                 """).addHeader("Content-Type", "application/json"));
         service.handleOrderPlaced(rejectOrderId);
         assertLastStatus(rejectOrderId, OrderStatus.REJECTED);

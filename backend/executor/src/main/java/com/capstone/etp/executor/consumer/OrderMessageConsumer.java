@@ -33,6 +33,10 @@ public class OrderMessageConsumer {
             log.warn("Ignoring unexpected eventType={}", envelope.getEventType());
             return;
         }
+        if (envelope.getEventTime() == null || envelope.getEventTime().isBlank()) {
+            log.warn("Ignoring ORDER_PLACED event with missing eventTime/occurredAt");
+            return;
+        }
 
         OrderPlacedPayload payload = mapper.convertValue(envelope.getPayload(), OrderPlacedPayload.class);
         if (payload.getOrderId() == null) {

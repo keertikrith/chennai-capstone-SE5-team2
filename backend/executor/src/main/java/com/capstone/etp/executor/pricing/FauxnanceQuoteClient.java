@@ -79,11 +79,26 @@ public class FauxnanceQuoteClient implements QuoteClient {
         if (body == null) {
             throw new PricingUnavailableException("Quote payload is empty for symbol " + symbol);
         }
-        BigDecimal bid = decimalField(body, "bid");
-        BigDecimal ask = decimalField(body, "ask");
-        BigDecimal price = decimalField(body, "price");
+
+        JsonNode quoteNode = body.path("data");
+        if (quoteNode.isMissingNode() || quoteNode.isNull()) {
+            quoteNode = body;
+        }
+
+        BigDecimal bid = decimalField(quoteNode, "bid");
+        BigDecimal ask = decimalField(quoteNode, "ask");
+        BigDecimal price = decimalField(quoteNode, "price");
+        String quoteSymbol = textField(quoteNode, "symbol");
+        if (quoteSymbol == null || quoteSymbol.isBlank()) {
+            quoteSymbol = symbol;
+        }
+
+        if (bid == null || ask == null) {
+            throw new PricingUnavailableException("Quote is missing bid/ask for symbol " + symbol);
+        }
+
         return Quote.builder()
-                .symbol(symbol)
+                .symbol(quoteSymbol)
                 .bid(bid)
                 .ask(ask)
                 .last(price)
@@ -106,6 +121,17 @@ public class FauxnanceQuoteClient implements QuoteClient {
             }
         }
         throw new PricingUnavailableException("Quote field has unsupported shape: " + field);
+    }
+
+    private String textField(JsonNode body, String field) {
+        JsonNode node = body.get(field);
+        if (node == null || node.isNull()) {
+            return null;
+        }
+        if (node.isTextual()) {
+            return node.asText();
+        }
+        return String.valueOf(node.asText());
     }
 
     private boolean isTransientStatus(HttpStatusCode status) {
