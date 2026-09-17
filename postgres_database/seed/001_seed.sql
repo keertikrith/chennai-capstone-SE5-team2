@@ -1,8 +1,8 @@
 BEGIN;
 
--- ---------------------------------------------------------------------
+
 -- CLIENTS
--- ---------------------------------------------------------------------
+
 INSERT INTO clients (id, client_ref, name, email, password_hash, phone, date_of_birth, gender, status) VALUES
 (1,  'C100000001', 'John Doe',        'john.doe@example.com',        'x_hash_1',  '9876543210', '1985-04-12', 'MALE',   'ACTIVE'),
 (2,  'C100000002', 'Jane Smith',      'jane.smith@example.com',      'x_hash_2',  '9876543211', '1990-07-23', 'FEMALE', 'ACTIVE'),
@@ -20,9 +20,9 @@ INSERT INTO clients (id, client_ref, name, email, password_hash, phone, date_of_
 (14, 'C100000014', 'Nina Patel',      'nina.patel@example.com',      'x_hash_14', '9988776662', '1980-01-09', 'FEMALE', 'DORMANT'),
 (15, 'C100000015', 'Minimal Fields',  'minimal.fields@example.com',  'x_hash_15', NULL,         NULL,         NULL,     'ACTIVE');
 
--- ---------------------------------------------------------------------
+
 -- ACCOUNTS
--- ---------------------------------------------------------------------
+
 INSERT INTO accounts (id, account_ref, client_id, account_type, currency, cash_balance, status, version, created_at, suspended_at, closed_at, updated_at) VALUES
 (1,  'ACC0000001', 1,  'US_EQUITY', 'USD', 15000.50, 'ACTIVE',    3, '2023-01-10 09:00:00+00', NULL,                     NULL,                     '2024-06-01 10:00:00+00'),
 (2,  'ACC0000002', 1,  'CRYPTO', 'USD', 500.00,   'ACTIVE',    1, '2023-02-15 09:00:00+00', NULL,                     NULL,                     NULL),
@@ -45,9 +45,9 @@ INSERT INTO accounts (id, account_ref, client_id, account_type, currency, cash_b
 (19, 'ACC0000019', 2,  'INDIAN_EQUITY', 'INR', 22000.00, 'ACTIVE',    2, '2023-10-30 09:00:00+00', NULL,                     NULL,                     NULL),
 (20, 'ACC0000020', 7,  'CRYPTO', 'USD', 60.00,    'SUSPENDED', 1, '2023-11-11 09:00:00+00', '2024-04-22 09:45:00+00', NULL,                     '2024-04-22 09:45:00+00');
 
--- ---------------------------------------------------------------------
--- ACCOUNT PREFERENCES  (not every account has one)
--- ---------------------------------------------------------------------
+
+-- ACCOUNT PREFERENCES 
+
 INSERT INTO account_preferences (account_id, risk_profile, investment_goals, preferred_sectors) VALUES
 (1,  'MODERATE',     'Long-term wealth growth',           ARRAY['Technology','Healthcare']),
 (2,  'AGGRESSIVE',   'High-growth speculative crypto exposure', ARRAY['Crypto']),
@@ -64,12 +64,10 @@ INSERT INTO account_preferences (account_id, risk_profile, investment_goals, pre
 (17, 'MODERATE',     'Growth with some downside protection', ARRAY['Technology']),
 (19, 'MODERATE',     'UK-based diversified equity growth', ARRAY['Technology','Consumer']),
 (20, 'AGGRESSIVE',   'Short-term crypto trading',          ARRAY['Crypto']);
--- Note: accounts 6, 10, 11, 16, 18 intentionally have no preferences row
--- (closed accounts, a brand-new account, and an empty portfolio account).
 
--- ---------------------------------------------------------------------
--- PORTFOLIOS  (one per account; account 16 has none yet - brand new)
--- ---------------------------------------------------------------------
+
+-- PORTFOLIOS 
+
 INSERT INTO portfolios (id, account_id, name, current_value, created_at, updated_at) VALUES
 (1,  1,  'John''s US Equity Portfolio',      12000.00, '2023-01-10 09:05:00+00', '2024-06-01 10:00:00+00'),
 (2,  2,  'John''s Crypto Portfolio',         42000.00, '2023-02-15 09:05:00+00', '2024-05-01 10:00:00+00'),
@@ -91,31 +89,31 @@ INSERT INTO portfolios (id, account_id, name, current_value, created_at, updated
 (19, 19, 'Jane''s UK Equity Portfolio',      4300.00,  '2023-10-30 09:05:00+00', '2023-10-30 09:05:00+00'),
 (20, 20, 'Emily''s Second Crypto Portfolio', 4200.00,  '2023-11-11 09:05:00+00', '2024-04-22 09:45:00+00');
 
--- ---------------------------------------------------------------------
--- INSTRUMENTS  (covers every asset class; one is delisted / not tradable)
--- ---------------------------------------------------------------------
-INSERT INTO instruments (id, symbol, exchange, name, asset_class, currency, is_tradable, stopped_at) VALUES
-(1,  'AAPL',     'NASDAQ', 'Apple Inc.',               'US_EQUITY',     'USD', TRUE,  NULL),
-(2,  'MSFT',     'NASDAQ', 'Microsoft Corporation',    'US_EQUITY',     'USD', TRUE,  NULL),
-(3,  'GOOGL',    'NASDAQ', 'Alphabet Inc.',            'US_EQUITY',     'USD', TRUE,  NULL),
-(4,  'TSLA',     'NASDAQ', 'Tesla Inc.',               'US_EQUITY',     'USD', TRUE,  NULL),
-(5,  'RELIANCE', 'NSE',    'Reliance Industries Ltd.', 'INDIAN_EQUITY', 'INR', TRUE,  NULL),
-(6,  'TCS',      'NSE',    'Tata Consultancy Services','INDIAN_EQUITY', 'INR', TRUE,  NULL),
-(7,  'INFY',     'NSE',    'Infosys Ltd.',             'INDIAN_EQUITY', 'INR', TRUE,  NULL),
-(8,  'EURUSD',   'FX',     'Euro / US Dollar',         'FX',            'USD', TRUE,  NULL),
-(9,  'GBPUSD',   'FX',     'British Pound / US Dollar','FX',            'USD', TRUE,  NULL),
-(10, 'USDJPY',   'FX',     'US Dollar / Japanese Yen', 'FX',            'JPY', TRUE,  NULL),
-(11, 'BTCUSD',   'CRYPTO', 'Bitcoin',                  'CRYPTO',        'USD', TRUE,  NULL),
-(12, 'ETHUSD',   'CRYPTO', 'Ethereum',                 'CRYPTO',        'USD', TRUE,  NULL),
-(13, 'SOLUSD',   'CRYPTO', 'Solana',                   'CRYPTO',        'USD', TRUE,  NULL),
-(14, 'WCOM',     'NASDAQ', 'WorldCom Inc. (Delisted)', 'US_EQUITY',     'USD', FALSE, '2024-01-01 00:00:00+00'),
-(15, 'YESBANK',  'NSE',    'Yes Bank Ltd.',            'INDIAN_EQUITY', 'INR', TRUE,  NULL);
 
--- ---------------------------------------------------------------------
+-- INSTRUMENTS 
+
+INSERT INTO instruments
+(id, symbol, exchange, name, asset_class, currency, is_tradable, stopped_at)
+VALUES
+(1,  'AAPL',        'NASDAQ', 'Apple Inc.',                  'US_EQUITY',     'USD', TRUE,  NULL),
+(2,  'MSFT',        'NASDAQ', 'Microsoft Corporation',       'US_EQUITY',     'USD', TRUE,  NULL),
+(3,  'GOOGL',       'NASDAQ', 'Alphabet Inc.',               'US_EQUITY',     'USD', TRUE,  NULL),
+(4,  'TSLA',        'NASDAQ', 'Tesla Inc.',                  'US_EQUITY',     'USD', TRUE,  NULL),
+(5,  'RELIANCE.NS', 'NSE',    'Reliance Industries Ltd.',    'INDIAN_EQUITY', 'INR', TRUE,  NULL),
+(6,  'TCS.NS',      'NSE',    'Tata Consultancy Services',   'INDIAN_EQUITY', 'INR', TRUE,  NULL),
+(7,  'INFY.NS',     'NSE',    'Infosys Ltd.',                'INDIAN_EQUITY', 'INR', TRUE,  NULL),
+(8,  'EURUSD=X',    'FX',     'Euro / US Dollar',            'FX',            'USD', TRUE,  NULL),
+(9,  'GBPUSD=X',    'FX',     'British Pound / US Dollar',   'FX',            'USD', TRUE,  NULL),
+(10, 'JPY=X',       'FX',     'US Dollar / Japanese Yen',    'FX',            'JPY', TRUE,  NULL),
+(11, 'BTC-USD',     'CRYPTO', 'Bitcoin',                     'CRYPTO',        'USD', TRUE,  NULL),
+(12, 'ETH-USD',     'CRYPTO', 'Ethereum',                    'CRYPTO',        'USD', TRUE,  NULL),
+(13, 'SOL-USD',     'CRYPTO', 'Solana',                      'CRYPTO',        'USD', TRUE,  NULL),
+(14, 'WCOM',        'NASDAQ', 'WorldCom Inc. (Delisted)',    'US_EQUITY',     'USD', FALSE, '2024-01-01 00:00:00+00'),
+(15, 'YESBANK.NS',  'NSE',    'Yes Bank Ltd.',               'INDIAN_EQUITY', 'INR', TRUE,  NULL);
+
+
 -- PORTFOLIO HOLDINGS
--- (includes normal holdings, a zero-quantity "sold out" holding, and a
---  historical holding in a now-delisted instrument)
--- ---------------------------------------------------------------------
+
 INSERT INTO portfolio_holdings (portfolio_id, instrument_id, quantity, avg_price, updated_at) VALUES
 (1,  1,  50,  170.25,     '2024-06-01 10:00:00+00'),
 (1,  2,  20,  310.10,     '2024-05-15 09:00:00+00'),
@@ -140,18 +138,11 @@ INSERT INTO portfolio_holdings (portfolio_id, instrument_id, quantity, avg_price
 (18, 11, 0,   40000.00,   '2023-10-10 15:30:00+00'), -- closed out before account closure
 (19, 1,  25,  172.00,     '2023-10-30 09:05:00+00'),
 (20, 12, 2,   2100.00,    '2024-04-22 09:45:00+00');
--- Note: portfolio_id 10 (Carlos's Crypto Portfolio) intentionally has
--- zero holding rows - a fresh, empty portfolio.
+-- portfolio_id 10 -an empty portfolio.
 
--- ---------------------------------------------------------------------
+
 -- ORDERS
--- Fixed UUIDs used so TRANSACTIONS below can reference them directly.
--- Covers NEW / FILLED / CANCELLED / REJECTED, market (NULL limit_price)
--- and limit orders, BUY and SELL.
--- ---------------------------------------------------------------------
--- ---------------------------------------------------------------------
--- ORDERS
--- ---------------------------------------------------------------------
+
 INSERT INTO orders
 (id, account_id, instrument_id, order_type, quantity, limit_price, status, reason, created_at, terminal_at)
 VALUES
@@ -182,11 +173,9 @@ VALUES
 ('00000000-0000-0000-0000-000000000025', 9,  6,  'SELL', 3,       3450.00,  'REJECTED',  'INSUFFICIENT_HOLDINGS',  '2024-08-03 10:00:00+00', '2024-08-03 10:00:04+00');
 
 
--- ---------------------------------------------------------------------
+
 -- TRANSACTIONS
--- One EXECUTED transaction per settled FILLED order, plus one FAILED
--- transaction representing a reconciliation/settlement failure.
--- ---------------------------------------------------------------------
+
 INSERT INTO transactions
 (order_id, quantity, executed_price, status, reason, executed_at)
 VALUES
