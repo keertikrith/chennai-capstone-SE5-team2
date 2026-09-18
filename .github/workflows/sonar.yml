@@ -100,7 +100,7 @@ jobs:
 
       - name: Install dev dependencies
         working-directory: analytics
-        run: pip install -e ".[dev]"
+        run: pip install -e ".[dev]" pytest-cov
 
       - name: Run tests with coverage
         working-directory: analytics
