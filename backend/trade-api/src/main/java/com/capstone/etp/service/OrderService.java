@@ -36,9 +36,10 @@ public class OrderService {
     public OrderResponse placeOrder(PlaceOrderRequest request) {
         // Perform database operations in a transaction
         PlaceOrderInfo info = persistOrder(request);
-
-        // Publish event AFTER transaction commits
-        orderEventProducer.publishOrderPlaced(info.order, info.instrument.getSymbol());
+ 
+        // Note: publishing is performed inside the transactional persistOrder
+        // so failures during serialization/publish will cause the DB transaction
+        // to roll back and avoid inserting orders for messages that cannot be published.
 
         return OrderResponse.builder()
                 .orderId(info.order.getId())
@@ -97,6 +98,12 @@ public class OrderService {
             throw new OptimisticLockException(
                     "Account version mismatch during order placement; concurrent modification detected");
         }
+ 
+        // Publish event BEFORE the transactional method returns so that any
+        // publish/serialization failure will cause the surrounding transaction
+        // to roll back and avoid persisting an order for an event that cannot
+        // be successfully published.
+        orderEventProducer.publishOrderPlaced(order, instrument.getSymbol());
 
         return new PlaceOrderInfo(order, instrument);
     }
