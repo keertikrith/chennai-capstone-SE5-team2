@@ -30,7 +30,8 @@ export class JwtTokenService {
             roles: roles
         },
             {
-                expiresIn: 900,
+                issuer: "auth-service",
+                expiresIn: "15m",
                 algorithm: "HS256"
 
             });
