@@ -7,9 +7,9 @@ if [ -f ".env" ]; then
     export $(grep -v '^#' .env | xargs)
 fi
 
-
 # Database connection
-DATABASE="${TARGET_DATABASE:-${POSTGRES_DB:-}}"
+# Uses capstone_db by default with trade and auth schemas
+DATABASE="${TARGET_DATABASE:-${DB_NAME:-capstone_db}}"
 
 
 if [ -z "$DATABASE" ]; then
@@ -22,7 +22,8 @@ echo "Using database: $DATABASE"
 
 
 # Apply migrations
-echo "Applying migrations..."
+# Migrations create the trade schema and all trade-related tables
+echo "Applying migrations to trade schema..."
 
 for migration in migrations/*.sql
 do
@@ -35,7 +36,8 @@ done
 
 
 # Load seed data
-echo "Loading seed data..."
+# Seed files must have "SET search_path TO trade, public;" to target the trade schema
+echo "Loading seed data into trade schema..."
 
 for seed_file in seed/*.sql
 do
@@ -46,7 +48,7 @@ do
         -f "$seed_file"
 done
 
-echo "Running analytical queries..."
+echo "Running analytical queries on trade schema..."
 
 for query_file in queries/*.sql
 do
@@ -54,9 +56,11 @@ do
     echo "Executing: $query_file"
     echo "===================================="
 
+    # Queries run against the trade schema
     psql "$DATABASE" \
         -v ON_ERROR_STOP=1 \
         -a \
+        -c "SET search_path TO trade, public;" \
         -f "$query_file"
 
     echo ""

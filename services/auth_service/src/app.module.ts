@@ -69,6 +69,11 @@ import { RefreshToken } from './auth/entity/refresh-token.entity';
                         'database.database',
                     ),
 
+                schema:
+                    config.get<string>(
+                        'database.schema',
+                    ),
+
                 entities: [
                     AuthUser,
                     RefreshToken,

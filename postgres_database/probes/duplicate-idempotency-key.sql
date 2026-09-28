@@ -1,6 +1,6 @@
 BEGIN;
 
--- First order: adding an order with idempotency key = 'duplicate-probe-key'
+-- First order: adding an order with idempotency key = 'f0f0f0f0-f0f0-f0f0-f0f0-f0f0f0f0f0f0'
 INSERT INTO orders
 (
     account_id,
@@ -15,7 +15,7 @@ VALUES
 (
     1,                  -- ACC0000001
     1,                  -- AAPL
-    'duplicate-probe-key',
+    'f0f0f0f0-f0f0-f0f0-f0f0-f0f0f0f0f0f0'::UUID,
     'BUY',
     1,
     100.00000000,
@@ -41,7 +41,7 @@ VALUES
 (
     1,                  -- ACC0000001
     1,                  -- AAPL
-    'duplicate-probe-key',
+    'f0f0f0f0-f0f0-f0f0-f0f0-f0f0f0f0f0f0'::UUID,
     'BUY',
     1,
     100.00000000,

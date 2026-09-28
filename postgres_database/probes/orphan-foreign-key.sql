@@ -16,9 +16,9 @@ INSERT INTO orders
 )
 VALUES
 (
-    10,                     --> account does not exist
+    999,                    --> account does not exist
     1,
-    'orphan-account-probe',
+    'e1e1e1e1-e1e1-e1e1-e1e1-e1e1e1e1e1e1'::UUID,
     'BUY',
     1,
     100.00000000,

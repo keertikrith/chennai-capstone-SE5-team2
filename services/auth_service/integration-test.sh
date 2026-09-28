@@ -91,7 +91,7 @@ wait_for_service() {
   echo "🔧 Troubleshooting steps:"
   echo "   1. Is the service running? Check: curl -v $url"
   echo "   2. Is the database connected? Check service logs"
-  echo "   3. Are migrations applied? Check: psql -U postgres -d auth_db -c 'SELECT * FROM auth_users LIMIT 1'"
+  echo "   3. Are migrations applied? Check: psql -U postgres -d capstone_db -c 'SELECT * FROM auth.auth_users LIMIT 1'"
   echo ""
   exit 1
 }

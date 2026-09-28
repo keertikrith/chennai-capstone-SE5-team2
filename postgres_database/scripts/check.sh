@@ -12,18 +12,18 @@ fi
 
 
 # DATABASE SELECTION
-
-DATABASE="${TARGET_DATABASE:-${POSTGRES_DB:-}}"
+# Uses capstone_db by default with trade schema
+DATABASE="${TARGET_DATABASE:-${DB_NAME:-capstone_db}}"
 
 
 if [ -z "$DATABASE" ]; then
-    echo "ERROR: TARGET_DATABASE or POSTGRES_DB is not set"
+    echo "ERROR: TARGET_DATABASE or DB_NAME is not set"
     exit 1
 fi
 
 
 echo "============================================================"
-echo "Running database probes"
+echo "Running database probes on trade schema"
 echo "Using database: $DATABASE"
 echo "============================================================"
 echo
@@ -56,6 +56,7 @@ do
 
     OUTPUT=$(psql "$DATABASE" \
         -v ON_ERROR_STOP=1 \
+        -c "SET search_path TO trade, public;" \
         -f "$probe" 2>&1)
 
     EXIT_CODE=$?

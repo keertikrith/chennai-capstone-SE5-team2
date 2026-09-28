@@ -3,7 +3,7 @@ services:
     image: postgres:16-alpine
     profiles: ["platform"]
     environment:
-      POSTGRES_DB: ${DB_NAME:-springboot_db}
+      POSTGRES_DB: ${DB_NAME:-capstone_db}
       POSTGRES_USER: ${DB_USER:-postgres}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
     ports:
@@ -15,7 +15,7 @@ services:
       - ./postgres_database/seed/001_seed.sql:/docker-entrypoint-initdb.d/003_seed.sql:ro
       - ./services/auth_service/migrations/001_initial_schema.sql:/docker-entrypoint-initdb.d/004_auth_service_schema.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-springboot_db}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-capstone_db}"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -54,7 +54,8 @@ services:
       JWT_ISSUER: ${JWT_ISSUER:-auth-service}
       DB_HOST: postgres
       DB_PORT: 5432
-      DB_NAME: ${DB_NAME:-springboot_db}
+      DB_NAME: ${DB_NAME:-capstone_db}
+      DB_SCHEMA: ${AUTH_DB_SCHEMA:-auth}
       DB_USER: ${DB_USER:-postgres}
       DB_PASSWORD: ${DB_PASSWORD:-postgres}
     ports:
@@ -80,7 +81,8 @@ services:
       SERVER_PORT: 8084
       DB_HOST: postgres
       DB_PORT: 5432
-      DB_NAME: ${DB_NAME:-springboot_db}
+      DB_NAME: ${DB_NAME:-capstone_db}
+      DB_SCHEMA: ${TRADE_DB_SCHEMA:-trade}
       DB_USER: ${DB_USER:-postgres}
       DB_PASSWORD: ${DB_PASSWORD:-postgres}
       JWT_SECRET: ${JWT_SECRET}
@@ -112,7 +114,8 @@ services:
       SERVER_PORT: 8085
       DB_HOST: postgres
       DB_PORT: 5432
-      DB_NAME: ${DB_NAME:-springboot_db}
+      DB_NAME: ${DB_NAME:-capstone_db}
+      DB_SCHEMA: ${TRADE_DB_SCHEMA:-trade}
       DB_USER: ${DB_USER:-postgres}
       DB_PASSWORD: ${DB_PASSWORD:-postgres}
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092

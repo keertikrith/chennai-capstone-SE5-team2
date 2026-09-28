@@ -4,6 +4,7 @@ export interface DatabaseConfig {
   database: string;
   user: string;
   password?: string;
+  schema?: string;
 }
 
 export interface AuthConfig {
@@ -25,9 +26,10 @@ export const configuration = (): AppConfig => ({
   database: {
     host: process.env.DB_HOST || 'localhost',
     port: parseInt(process.env.DB_PORT || '5432', 10),
-    database: process.env.DB_NAME || 'springboot_db',
+    database: process.env.DB_NAME || 'capstone_db',
     user: process.env.DB_USER || 'postgres',
     password: process.env.DB_PASSWORD || 'postgres',
+    schema: process.env.DB_SCHEMA || 'auth',
   },
   auth: {
     jwtSecret: process.env.JWT_SECRET || 'dev-jwt-secret-at-least-32-chars-long-12345678',
