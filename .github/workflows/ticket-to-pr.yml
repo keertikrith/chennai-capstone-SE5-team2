@@ -4,6 +4,9 @@ on:
   schedule:
     - cron: "*/30 * * * *"
   workflow_dispatch: {}
+  push:
+    branches:
+      - feature/automation-pipeline
 
 permissions:
   contents: read
