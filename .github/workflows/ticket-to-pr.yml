@@ -1,0 +1,40 @@
+name: Ticket Breakdown
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  issues: write   # the default token's issues:write permission is all this needs — no PAT required
+
+jobs:
+  ticket-to-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout this repo
+        uses: actions/checkout@v4
+
+      - name: Checkout reference repo — read only
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.REFERENCE_REPO }}        # e.g. "your-org/sprint-docs"
+          path: reference-repo
+          persist-credentials: false                      # no credential retained — this job cannot push here even by mistake
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Run ticket breakdown agent
+        run: node scripts/ticket-to-pr.mjs
+        env:
+          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+          JIRA_JQL: ${{ vars.JIRA_JQL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REFERENCE_DOCS_PATH: reference-repo
