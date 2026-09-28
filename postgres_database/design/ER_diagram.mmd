@@ -3,8 +3,7 @@ erDiagram
         bigserial id PK
         varchar client_ref UK
         text name
-        text email UK
-        text password_hash
+        text email UK        
         text phone
         date date_of_birth
         gender_enum gender
@@ -65,28 +64,45 @@ erDiagram
     }
 
     ORDERS {
-        bigserial id PK
+        uuid id PK
         bigint account_id FK
         bigint instrument_id FK
-        text idempotency_key UK
+        uuid idempotency_key UK
         order_type_enum order_type
         integer quantity
         numeric limit_price
         order_status_enum status
+        text reason
         timestamptz created_at
         timestamptz terminal_at
     }
 
     TRANSACTIONS {
-        bigserial id PK
-        bigint order_id FK, UK
+        uuid id PK
+        uuid order_id FK, UK
         integer quantity
         numeric executed_price
         transaction_status_enum status
+        text reason
         timestamptz executed_at
     }
 
-    CLIENTS ||--|{ ACCOUNTS : "owns"
+    WATCHLIST {
+        bigserial id PK
+        bigint account_id FK, UK
+        text name
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    WATCHLIST_ITEMS {
+        bigserial id PK
+        bigint watchlist_id FK
+        bigint instrument_id FK
+        timestamptz added_at
+    }
+
+    CLIENTS ||--|| ACCOUNTS : "owns"
     ACCOUNTS ||--o{ ACCOUNT_PREFERENCES : "has"
     ACCOUNTS ||--|| PORTFOLIOS : "has"
     PORTFOLIOS ||--|{ PORTFOLIO_HOLDINGS : "contains"
@@ -94,3 +110,6 @@ erDiagram
     ACCOUNTS ||--o{ ORDERS : "places"
     INSTRUMENTS ||--o{ ORDERS : "traded as"
     ORDERS ||--|| TRANSACTIONS : "settled as"
+    ACCOUNTS ||--|| WATCHLIST : "has"
+    WATCHLIST ||--|{ WATCHLIST_ITEMS : "contains"
+    INSTRUMENTS ||--o{ WATCHLIST_ITEMS : "in watchlist"
