@@ -1,5 +1,8 @@
 BEGIN;
 
+-- Set search path to trade schema
+SET search_path TO trade, public;
+
 -- Index for QUERY 1
 -- (All open orders for one account, newest first)
 

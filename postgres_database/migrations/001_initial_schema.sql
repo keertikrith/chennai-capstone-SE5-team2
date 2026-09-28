@@ -1,5 +1,9 @@
 BEGIN;
 
+-- Create trade schema
+CREATE SCHEMA IF NOT EXISTS trade;
+SET search_path TO trade, public;
+
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 
@@ -285,7 +289,7 @@ CREATE TABLE orders (
     instrument_id       BIGINT NOT NULL
                             REFERENCES instruments(id)
                             ON DELETE RESTRICT,
-    idempotency_key     UUID NOT NULL DEFAULT gen_random_uuid(),
+    idempotency_key     UUID NOT NULL UNIQUE,
     order_type          order_type_enum NOT NULL,
     quantity            INTEGER NOT NULL,
     limit_price               NUMERIC(10,2),
