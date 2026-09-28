@@ -48,7 +48,7 @@ const jiraAuth = Buffer.from(`${JIRA_EMAIL}:${JIRA_API_TOKEN}`).toString("base64
 
 async function jiraSearch() {
   const jql = JIRA_JQL || `status = "Ready for Dev" ORDER BY created ASC`;
-  const res = await fetch(`${JIRA_BASE_URL}/rest/api/3/search`, {
+  const res = await fetch(`${JIRA_BASE_URL}/rest/api/3/search/jql`, {
     method: "POST", // query endpoint, despite the verb — reads only, never mutates
     headers: {
       Authorization: `Basic ${jiraAuth}`,
