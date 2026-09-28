@@ -1,4 +1,3 @@
-
 BEGIN;
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
@@ -72,6 +71,8 @@ CREATE TYPE transaction_status_enum AS ENUM (
 
 
 DROP TABLE IF EXISTS
+    watchlist_items,
+    watchlist,
     transactions,
     orders,
     portfolio_holdings,
@@ -79,8 +80,7 @@ DROP TABLE IF EXISTS
     portfolios,
     account_preferences,
     accounts,
-    clients,
-    watchlist
+    clients
 CASCADE;
 
 
@@ -92,7 +92,6 @@ CREATE TABLE clients (
     client_ref      VARCHAR(10) NOT NULL UNIQUE,
     name            TEXT NOT NULL,
     email           TEXT NOT NULL UNIQUE,
-    password_hash   TEXT NOT NULL,
     phone           TEXT,
     date_of_birth   DATE,
     gender          gender_enum,
@@ -346,23 +345,40 @@ CREATE TABLE transactions (
 );
 
 
--- ---------------------------------------------------------------------
 -- WATCHLIST
--- ---------------------------------------------------------------------
 
 CREATE TABLE watchlist (
-    account_id     BIGINT NOT NULL
-                       REFERENCES accounts(id)
-                       ON DELETE RESTRICT,
-
-    instrument_id  BIGINT NOT NULL
-                       REFERENCES instruments(id)
-                       ON DELETE RESTRICT,
-
-    added_at       TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    PRIMARY KEY (account_id, instrument_id)
+    id              BIGSERIAL PRIMARY KEY,
+    account_id      BIGINT NOT NULL UNIQUE
+                        REFERENCES accounts(id)
+                        ON DELETE RESTRICT,
+    name            TEXT NOT NULL DEFAULT 'My Watchlist',
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE INDEX idx_watchlist_account_id
+ON watchlist(account_id);
+
+
+-- WATCHLIST ITEMS
+
+CREATE TABLE watchlist_items (
+    id              BIGSERIAL PRIMARY KEY,
+    watchlist_id    BIGINT NOT NULL
+                        REFERENCES watchlist(id)
+                        ON DELETE RESTRICT,
+    instrument_id   BIGINT NOT NULL
+                        REFERENCES instruments(id)
+                        ON DELETE RESTRICT,
+    added_at        TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT uq_watchlist_instrument
+        UNIQUE(watchlist_id, instrument_id)
+);
+
+CREATE INDEX idx_watchlist_items_instrument_id
+ON watchlist_items(instrument_id);
 
 
 
