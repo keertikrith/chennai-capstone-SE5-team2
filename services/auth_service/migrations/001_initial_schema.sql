@@ -1,3 +1,7 @@
+-- Create auth schema
+CREATE SCHEMA IF NOT EXISTS auth;
+SET search_path TO auth, public;
+
 -- Create auth_users table
 CREATE TABLE IF NOT EXISTS auth_users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
