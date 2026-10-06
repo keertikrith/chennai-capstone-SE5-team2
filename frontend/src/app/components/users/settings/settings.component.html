@@ -1,0 +1,77 @@
+<section class="page" data-testid="settings-page">
+  <header class="head">
+    <h1>Settings</h1>
+    <p class="muted">Choose how we reach you about your orders and price alerts, and which account to open on.</p>
+  </header>
+
+  @if (loading()) {
+    <article class="card" aria-busy="true" aria-label="Loading settings">
+      <span class="skeleton short"></span><span class="skeleton"></span><span class="skeleton"></span>
+    </article>
+  } @else if (loadError()) {
+    <div class="banner error" role="alert" data-testid="settings-load-error">{{ loadError() }}</div>
+    <div><button type="button" class="secondary" (click)="load()">Try again</button></div>
+  } @else {
+    <form class="card settings" [formGroup]="form" (ngSubmit)="save()" novalidate data-testid="settings-form">
+
+      @if (saved()) {
+        <div class="banner success" role="status" data-testid="settings-saved">
+          Saved. Your default account opens the next time you sign in.
+        </div>
+      }
+      @if (saveError()) {
+        <div class="banner error" role="alert" data-testid="settings-error">{{ saveError() }}</div>
+      }
+
+      <fieldset class="group">
+        <legend>Alert channel</legend>
+        @if (preferences()?.source === 'DEFAULT') {
+          <p class="muted" data-testid="settings-default-note">
+            You have not chosen yet, so we use the {{ label(preferences()!.alertChannel) }} option below.
+          </p>
+        }
+
+        @for (option of preferences()?.channels ?? []; track option.channel) {
+          <label class="choice" [class.choice--off]="!option.available">
+            <input
+              type="radio"
+              formControlName="alertChannel"
+              [value]="option.channel"
+              [attr.disabled]="option.available ? null : ''"
+              [attr.data-testid]="'channel-' + option.channel"
+            />
+            <span class="choice__text">
+              <span class="choice__name">{{ label(option.channel) }}</span>
+              <span class="choice__hint muted">{{ option.hint }}</span>
+            </span>
+          </label>
+        }
+
+        <p class="field-hint">
+          We use the contact details already on your profile. They are not copied or stored here, and
+          you cannot enter a different address on this page.
+        </p>
+      </fieldset>
+
+      <div class="field">
+        <label for="default-account">Default account</label>
+        <select id="default-account" formControlName="defaultAccountId" data-testid="default-account">
+          @for (id of accounts(); track id) {
+            <option [ngValue]="id">Account {{ id }}</option>
+          }
+        </select>
+        @if (accounts().length < 2) {
+          <span class="field-hint">This sign-in works on one account, so there is nothing else to choose yet.</span>
+        } @else {
+          <span class="field-hint">The account the application opens on when you sign in.</span>
+        }
+      </div>
+
+      <div class="actions">
+        <button type="submit" class="primary" [disabled]="saving() || form.pristine" data-testid="settings-save">
+          @if (saving()) { Saving... } @else { Save settings }
+        </button>
+      </div>
+    </form>
+  }
+</section>

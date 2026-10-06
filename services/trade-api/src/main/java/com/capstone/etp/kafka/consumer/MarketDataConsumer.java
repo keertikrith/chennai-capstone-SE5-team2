@@ -4,27 +4,43 @@ import com.capstone.etp.dto.MarketQuote;
 import com.capstone.etp.service.MarketQuoteCache;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
+
 /**
- * Reads QUOTE events the executor publishes to the market-data topic and keeps the latest per
- * symbol, so the watchlist can show bid, ask and last without calling the quote provider itself.
- * A malformed message is logged and skipped; it must never stop the listener.
+ * Reads QUOTE events the executor publishes to the market-data topic, in the
+ * {@code watchlist-service} group, and keeps the latest per symbol so the watchlist can show bid,
+ * ask and last without calling the quote provider itself. Each quote is then passed to every
+ * {@link QuoteObserver} (the price-alert evaluator is one). This is the only listener on the topic,
+ * so every observer sees the whole stream. A malformed message is logged and skipped; it must
+ * never stop the listener.
  */
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class MarketDataConsumer {
 
     private final ObjectMapper objectMapper;
     private final MarketQuoteCache cache;
+    private final List<QuoteObserver> observers;
+
+    @Autowired
+    public MarketDataConsumer(ObjectMapper objectMapper, MarketQuoteCache cache, List<QuoteObserver> observers) {
+        this.objectMapper = objectMapper;
+        this.cache = cache;
+        this.observers = observers;
+    }
+
+    public MarketDataConsumer(ObjectMapper objectMapper, MarketQuoteCache cache) {
+        this(objectMapper, cache, List.of());
+    }
 
     @KafkaListener(
             topics = "${app.kafka.topics.market-data:market-data}",
-            groupId = "${spring.kafka.consumer.group-id:trade-api-market-data}",
+            groupId = "${app.kafka.groups.watchlist:watchlist-service}",
             autoStartup = "${app.market-data.consumer.enabled:true}")
     public void onMessage(String message) {
         try {
@@ -33,9 +49,23 @@ public class MarketDataConsumer {
                 log.warn("market-data message without a payload, skipped");
                 return;
             }
-            cache.put(objectMapper.treeToValue(payload, MarketQuote.class));
+            MarketQuote quote = objectMapper.treeToValue(payload, MarketQuote.class);
+            cache.put(quote);
+            notifyObservers(quote);
         } catch (Exception e) {
             log.warn("Could not read a market-data message, skipped: {}", e.getMessage());
+        }
+    }
+
+    /** Every observer sees every quote. One that fails is logged and cannot stop the others. */
+    private void notifyObservers(MarketQuote quote) {
+        for (QuoteObserver observer : observers) {
+            try {
+                observer.onQuote(quote);
+            } catch (RuntimeException e) {
+                log.error("Quote observer {} failed for {}: {}",
+                        observer.getClass().getSimpleName(), quote.getSymbol(), e.getMessage());
+            }
         }
     }
 }

@@ -267,6 +267,23 @@
   box-shadow: 0 10px 20px -10px var(--reject);
 }
 
+/* A third, quieter action under Buy and Sell: it spans both columns. */
+.trade--alert {
+  grid-column: 1 / -1;
+  padding: 8px;
+  font-weight: 600;
+  font-size: 12.5px;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--line);
+}
+
+.trade--alert:hover {
+  background: var(--surface);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 .empty {
   display: grid;
   justify-items: center;

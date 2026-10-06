@@ -71,6 +71,20 @@ describe('ApiErrorMessageService', () => {
     expect(message).toBe('Your username or password was not accepted. Check them and try again.');
   });
 
+  it('words the Sprint 10 codes for a customer, never the developer text', () => {
+    const say = (status: number, errorCode: string) =>
+      service.getMessage(new HttpErrorResponse({ status, error: { errorCode, message: 'developer text' } }));
+
+    expect(say(503, 'MKT-503')).toContain('Prices are not available right now');
+    expect(say(503, 'MKT-503')).toContain('orders are not affected');
+    expect(say(409, 'ALR-409')).toContain('limit for price alerts');
+    expect(say(404, 'ALR-404')).toContain('alert');
+    expect(say(404, 'NTF-404')).toContain('message');
+    for (const code of ['MKT-503', 'ALR-409', 'ALR-404', 'NTF-404']) {
+      expect(say(400, code)).not.toContain('developer text');
+    }
+  });
+
   it('treats a 401 without an envelope as an expired session', () => {
     const message = service.getMessage(new HttpErrorResponse({ status: 401 }));
 

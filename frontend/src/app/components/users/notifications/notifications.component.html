@@ -1,0 +1,65 @@
+<section class="page" data-testid="notifications-page">
+  <header class="head">
+    <div>
+      <h1>Inbox</h1>
+      <p class="muted">Messages about your orders and price alerts, including ones you missed.</p>
+    </div>
+    <div class="tabs" role="tablist" aria-label="Filter messages">
+      <button type="button" role="tab" class="tab" [class.tab--on]="filter() === 'ALL'"
+              [attr.aria-selected]="filter() === 'ALL'" (click)="setFilter('ALL')" data-testid="filter-all">
+        All
+      </button>
+      <button type="button" role="tab" class="tab" [class.tab--on]="filter() === 'UNREAD'"
+              [attr.aria-selected]="filter() === 'UNREAD'" (click)="setFilter('UNREAD')" data-testid="filter-unread">
+        Unread ({{ unreadCount() }})
+      </button>
+    </div>
+  </header>
+
+  @if (actionError()) {
+    <div class="banner error" role="alert" data-testid="notifications-action-error">{{ actionError() }}</div>
+  }
+
+  @if (loading()) {
+    <article class="card" aria-busy="true" aria-label="Loading messages">
+      <span class="skeleton short"></span><span class="skeleton"></span><span class="skeleton"></span>
+    </article>
+  } @else if (error()) {
+    <div class="banner error" role="alert" data-testid="notifications-error">{{ error() }}</div>
+    <div><button type="button" class="secondary" (click)="load()">Try again</button></div>
+  } @else if (visible().length === 0) {
+    <article class="card empty" data-testid="notifications-empty">
+      @if (filter() === 'UNREAD') {
+        <p>You are all caught up.</p>
+      } @else {
+        <p>No messages yet. We will tell you here when an order fills, is rejected or is cancelled, and when a price alert fires.</p>
+      }
+    </article>
+  } @else {
+    <ul class="list">
+      @for (item of visible(); track item.id) {
+        <li class="card message" [class.message--unread]="!item.read" [attr.data-testid]="'notification-' + item.id">
+          <div class="message__top">
+            <span class="kind" [attr.data-kind]="item.kind">{{ kindLabel(item.kind) }}</span>
+            <time class="muted" [attr.datetime]="item.createdAt">{{ item.createdAt | date: 'd MMM y, HH:mm' }}</time>
+          </div>
+          <h2 class="message__subject">{{ item.subject }}</h2>
+          <p class="message__body">{{ item.body }}</p>
+          <p class="message__delivery muted" [attr.data-status]="item.status" data-testid="notification-delivery">
+            <span class="dot" aria-hidden="true"></span>{{ delivery(item) }}
+          </p>
+          <div class="message__actions">
+            @if (!item.read) {
+              <button type="button" class="secondary" [disabled]="busyId() !== null" (click)="markRead(item)"
+                      data-testid="mark-read">
+                Mark as read
+              </button>
+            } @else {
+              <span class="muted">Read</span>
+            }
+          </div>
+        </li>
+      }
+    </ul>
+  }
+</section>

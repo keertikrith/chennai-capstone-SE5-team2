@@ -399,6 +399,8 @@ export class AuthService {
     localStorage.removeItem(this.sessionIdKey);
     // A half-filled order belongs to the signed-in user, not to whoever signs in next.
     sessionStorage.removeItem('order_ticket_draft');
+    // The account a customer opened on belongs to that sign-in, not to whoever signs in next.
+    sessionStorage.removeItem('active_account_id');
 
     if (reason) {
       // Forced sign-out (tampered or rejected token): say why, on the sign-in page.

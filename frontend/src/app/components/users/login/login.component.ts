@@ -6,6 +6,7 @@ import { AuthService, LoginRequest } from '../../../core/auth/auth.service';
 import { BrandLogoComponent } from '../shared/brand-logo/brand-logo.component';
 import { ThemeService } from '../../../core/theme/theme.service';
 import { SessionSocketService } from '../../../core/auth/session-socket.service';
+import { PreferencesService } from '../../../core/services/preferences.service';
 
 @Component({
   selector: 'app-login',
@@ -28,6 +29,7 @@ export class LoginComponent {
   private route = inject(ActivatedRoute);
   private themeService = inject(ThemeService);
   private sessionSocket = inject(SessionSocketService);
+  private preferences = inject(PreferencesService);
   private cdr = inject(ChangeDetectorRef);
   private appRef = inject(ApplicationRef);
 
@@ -291,7 +293,11 @@ export class LoginComponent {
           ? requested
           : home;
 
-        this.router.navigateByUrl(target, { replaceUrl: true });
+        // The customer's stored default account becomes the one the application opens on. This never
+        // fails and never waits long: if it cannot be read they simply land on their own account.
+        this.preferences.applyDefaultAccountAtSignIn().subscribe({
+          complete: () => this.router.navigateByUrl(target, { replaceUrl: true })
+        });
       },
       error: (error: any) => {
         this.isSubmitting.set(false);

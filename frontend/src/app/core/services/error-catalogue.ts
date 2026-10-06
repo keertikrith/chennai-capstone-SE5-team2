@@ -10,7 +10,12 @@ export const CATALOGUE_CODES = [
   'VAL-422',
   'AUTH-401',
   'AUTH-409',
-  'CUR-422'
+  'CUR-422',
+  // Sprint 10 extensions: a pricing outage, notification and alert lookups, the alert cap.
+  'MKT-503',
+  'NTF-404',
+  'ALR-404',
+  'ALR-409'
 ] as const;
 
 /** Raised by this application itself when a feature has no backend endpoint. */
@@ -30,6 +35,12 @@ export const ERROR_MESSAGES: Record<CatalogueCode, string> = {
   'AUTH-401': 'Your session has expired or the sign-in was refused. Sign in again.',
   'AUTH-409': 'That username is already taken. Choose another one, or sign in instead.',
   'CUR-422': 'That currency pair is not supported. Pick a different pair and try again.',
+  'MKT-503':
+    'Prices are not available right now, so your holdings cannot be valued. Your orders are not affected. Try again in a moment.',
+  'NTF-404': 'We could not find that message. Refresh your inbox.',
+  'ALR-404': 'We could not find that alert. It may already have been removed.',
+  'ALR-409':
+    'You have reached the limit for price alerts, or this alert is still being delivered. Remove a finished alert and try again.',
   'API-NOT-AVAILABLE': 'This feature is not available yet because the platform does not expose it.'
 };
 

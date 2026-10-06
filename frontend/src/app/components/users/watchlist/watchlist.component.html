@@ -490,6 +490,15 @@
               Sell
             </a>
 
+            <a
+              class="trade trade--alert"
+              [routerLink]="['/alerts']"
+              [queryParams]="{ symbol: card.symbol }"
+              data-testid="watch-alert"
+            >
+              Set a price alert
+            </a>
+
           </div>
 
         </article>

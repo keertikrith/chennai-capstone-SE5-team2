@@ -1,0 +1,153 @@
+:host {
+  display: block;
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.head h1 {
+  margin: 0 0 2px;
+}
+
+.head p {
+  margin: 0;
+}
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px;
+}
+
+.tile {
+  display: grid;
+  gap: 2px;
+}
+
+.tile--wide {
+  max-width: 320px;
+}
+
+.tile p {
+  margin: 0;
+}
+
+.tile__label {
+  font-size: 12px;
+}
+
+.tile__value {
+  font-size: 22px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.tile__note {
+  font-size: 12px;
+}
+
+.unit {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+/* Profit and loss: the word and the sign carry the meaning, colour only helps. */
+[data-dir='gain'] {
+  color: var(--ok);
+}
+
+[data-dir='loss'] {
+  color: var(--reject);
+}
+
+.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.scroll {
+  overflow-x: auto;
+}
+
+.row--stale td {
+  background-color: color-mix(in srgb, var(--cancel-bg) 45%, transparent);
+}
+
+.pill {
+  display: inline-block;
+  padding: 1px 9px;
+  border-radius: 99px;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.pill--live {
+  background-color: var(--ok-bg);
+  color: var(--ok);
+}
+
+.pill--stale {
+  background-color: var(--cancel-bg);
+  color: var(--text);
+  border: 1px solid var(--line);
+}
+
+.asof {
+  margin-left: 6px;
+  font-size: 11.5px;
+}
+
+.range {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+  margin: 10px 0;
+}
+
+.field {
+  display: grid;
+  gap: 4px;
+}
+
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding-bottom: 8px;
+}
+
+.check input {
+  width: auto;
+  accent-color: var(--accent);
+}
+
+.pnl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+  margin: 8px 0 12px;
+}
+
+.pnl div {
+  display: grid;
+  gap: 2px;
+}
+
+.pnl dt {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.pnl dd {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}

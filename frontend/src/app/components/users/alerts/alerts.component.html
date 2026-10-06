@@ -1,0 +1,107 @@
+<section class="page" data-testid="alerts-page">
+  <header class="head">
+    <h1>Price alerts</h1>
+    <p class="muted">
+      Tell me when a price crosses a level. Each alert fires once, then reaches you on the channel you chose in
+      <a routerLink="/settings">Settings</a>. You can hold up to {{ cap }}.
+    </p>
+  </header>
+
+  <form class="card create" [formGroup]="form" (ngSubmit)="create()" novalidate data-testid="alert-form">
+    @if (createError()) {
+      <div class="banner error" role="alert" data-testid="alert-create-error">{{ createError() }}</div>
+    }
+
+    <div class="create__row">
+      <div class="field">
+        <label for="alert-symbol">Instrument</label>
+        <select id="alert-symbol" formControlName="symbol" data-testid="alert-symbol">
+          <option value="" disabled>Choose an instrument</option>
+          @for (item of instruments(); track item.symbol) {
+            <option [value]="item.symbol">{{ item.symbol }}: {{ item.name }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="alert-direction">When the price</label>
+        <select id="alert-direction" formControlName="direction" data-testid="alert-direction">
+          <option value="ABOVE">rises to or above</option>
+          <option value="BELOW">falls to or below</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="alert-threshold">Level</label>
+        <input id="alert-threshold" type="text" inputmode="decimal" formControlName="threshold"
+               [class.invalid]="form.controls.threshold.touched && form.controls.threshold.invalid"
+               data-testid="alert-threshold" autocomplete="off" />
+        @if (form.controls.threshold.touched && form.controls.threshold.invalid) {
+          <span class="field-error">Enter a price above zero, with at most four decimals.</span>
+        }
+      </div>
+
+      <button type="submit" class="primary" [disabled]="creating()" data-testid="alert-create">
+        @if (creating()) { Adding... } @else { Add alert }
+      </button>
+    </div>
+    <span class="field-hint">{{ remaining() }} of {{ cap }} alerts left. Remove a finished alert to make room.</span>
+  </form>
+
+  @if (actionError()) {
+    <div class="banner error" role="alert" data-testid="alert-action-error">{{ actionError() }}</div>
+  }
+
+  @if (loading()) {
+    <article class="card" aria-busy="true" aria-label="Loading alerts">
+      <span class="skeleton short"></span><span class="skeleton"></span>
+    </article>
+  } @else if (error()) {
+    <div class="banner error" role="alert" data-testid="alerts-error">{{ error() }}</div>
+    <div><button type="button" class="secondary" (click)="load()">Try again</button></div>
+  } @else if (alerts().length === 0) {
+    <article class="card empty" data-testid="alerts-empty">
+      <p>No alerts yet. Add one above, or use "Set a price alert" on a watchlist card.</p>
+    </article>
+  } @else {
+    <article class="card">
+      <table>
+        <thead>
+          <tr>
+            <th>Instrument</th>
+            <th>Condition</th>
+            <th>State</th>
+            <th class="end"></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (alert of alerts(); track alert.id) {
+            <tr [attr.data-testid]="'alert-' + alert.id">
+              <td><strong>{{ alert.symbol }}</strong></td>
+              <td>Price {{ describe(alert) }}</td>
+              <td>
+                <span class="state" [attr.data-status]="alert.status" [attr.data-delivery]="alert.deliveryState"
+                      data-testid="alert-state">
+                  {{ statusText(alert) }}
+                </span>
+                @if (alert.status === 'TRIGGERED' && alert.triggeredPrice !== null) {
+                  <span class="muted fired">
+                    at {{ alert.triggeredPrice | number: '1.2-4' }}, {{ alert.triggeredAt | date: 'd MMM y, HH:mm' }}
+                  </span>
+                }
+              </td>
+              <td class="end">
+                @if (canRemove(alert)) {
+                  <button type="button" class="secondary" [disabled]="busyId() !== null" (click)="remove(alert)"
+                          data-testid="alert-remove">
+                    {{ removeLabel(alert) }}
+                  </button>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </article>
+  }
+</section>

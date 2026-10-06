@@ -1,0 +1,92 @@
+:host {
+  display: block;
+}
+
+.head h1 {
+  margin: 0 0 2px;
+}
+
+.head p {
+  margin: 0;
+}
+
+.settings {
+  display: grid;
+  gap: 16px;
+  max-width: 560px;
+}
+
+.group {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.group legend {
+  padding: 0;
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+
+.group p {
+  margin: 0;
+}
+
+.choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background-color: var(--bg);
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease;
+}
+
+.choice:hover:not(.choice--off) {
+  border-color: var(--accent);
+}
+
+.choice:has(input:checked) {
+  border-color: var(--accent);
+  background-color: var(--surface);
+}
+
+.choice--off {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.choice input {
+  margin-top: 3px;
+  width: auto;
+  accent-color: var(--accent);
+}
+
+.choice__text {
+  display: grid;
+  gap: 1px;
+}
+
+.choice__name {
+  font-weight: 600;
+}
+
+.choice__hint {
+  font-size: 12px;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+}

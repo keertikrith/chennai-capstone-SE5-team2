@@ -62,6 +62,42 @@ export const routes: Routes = [
         (m) => m.AccountComponent
       )
   },
+  {
+    path: 'portfolio',
+    title: 'Portfolio',
+    canActivate: [authGuard, customerGuard],
+    loadComponent: () =>
+      import('./components/users/portfolio/portfolio.component').then(
+        (m) => m.PortfolioComponent
+      )
+  },
+  {
+    path: 'alerts',
+    title: 'Price alerts',
+    canActivate: [authGuard, customerGuard],
+    loadComponent: () =>
+      import('./components/users/alerts/alerts.component').then(
+        (m) => m.AlertsComponent
+      )
+  },
+  {
+    path: 'notifications',
+    title: 'Inbox',
+    canActivate: [authGuard, customerGuard],
+    loadComponent: () =>
+      import('./components/users/notifications/notifications.component').then(
+        (m) => m.NotificationsComponent
+      )
+  },
+  {
+    path: 'settings',
+    title: 'Settings',
+    canActivate: [authGuard, customerGuard],
+    loadComponent: () =>
+      import('./components/users/settings/settings.component').then(
+        (m) => m.SettingsComponent
+      )
+  },
 	{
 		path: '**',
 		redirectTo: ''

@@ -11,6 +11,9 @@
         @if (item.path === '/account' && mustChangePassword()) {
           <span class="nav-dot" title="Change your temporary password" aria-label="Action needed"></span>
         }
+        @if (item.unread && unread() > 0) {
+          <span class="nav-count" [attr.aria-label]="unread() + ' unread messages'" data-testid="unread-badge">{{ unread() > 99 ? '99+' : unread() }}</span>
+        }
       </a>
     }
   </nav>

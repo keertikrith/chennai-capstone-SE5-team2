@@ -1,0 +1,78 @@
+:host {
+  display: block;
+}
+
+.head h1 {
+  margin: 0 0 2px;
+}
+
+.head p {
+  margin: 0;
+}
+
+.create {
+  display: grid;
+  gap: 10px;
+}
+
+.create__row {
+  display: grid;
+  grid-template-columns: minmax(180px, 2fr) minmax(150px, 1.2fr) minmax(110px, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+}
+
+.end {
+  text-align: right;
+}
+
+.state {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 99px;
+  font-size: 12px;
+  font-weight: 600;
+  background-color: var(--new-bg);
+  color: var(--new);
+}
+
+.state[data-status='CANCELLED'] {
+  background-color: var(--cancel-bg);
+  color: var(--cancel);
+}
+
+.state[data-status='TRIGGERED'] {
+  background-color: var(--ok-bg);
+  color: var(--ok);
+}
+
+.state[data-delivery='HANDOVER_FAILED'] {
+  background-color: var(--reject-bg);
+  color: var(--reject);
+}
+
+.fired {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+}
+
+.empty {
+  text-align: center;
+  padding: 28px 16px;
+}
+
+.empty p {
+  margin: 0;
+}
+
+@media (max-width: 760px) {
+  .create__row {
+    grid-template-columns: 1fr;
+  }
+}

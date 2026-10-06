@@ -6,12 +6,14 @@ import { vi } from 'vitest';
 import { LoginComponent } from './login.component';
 import { AuthService } from '../../../core/auth/auth.service';
 import { SessionSocketService } from '../../../core/auth/session-socket.service';
+import { PreferencesService } from '../../../core/services/preferences.service';
 import { ThemeService } from '../../../core/theme/theme.service';
 
 describe('LoginComponent', () => {
   let component: LoginComponent;
   let fixture: ComponentFixture<LoginComponent>;
   let authService: any;
+  let preferencesService: { applyDefaultAccountAtSignIn: ReturnType<typeof vi.fn> };
   let router: Router;
   let navigateByUrlSpy: ReturnType<typeof vi.spyOn>;
 
@@ -33,6 +35,8 @@ describe('LoginComponent', () => {
       mustChangePassword: vi.fn().mockReturnValue(false)
     };
 
+    preferencesService = { applyDefaultAccountAtSignIn: vi.fn().mockReturnValue(of(undefined)) };
+
     const sessionSocketMock = {
       connect: vi.fn()
     };
@@ -48,6 +52,7 @@ describe('LoginComponent', () => {
         provideRouter(testRoutes),
         { provide: AuthService, useValue: authService },
         { provide: SessionSocketService, useValue: sessionSocketMock },
+        { provide: PreferencesService, useValue: preferencesService },
         { provide: ThemeService, useValue: themeMock }
       ]
     }).compileComponents();
@@ -159,6 +164,39 @@ describe('LoginComponent', () => {
 
       expect(navigateByUrlSpy).toHaveBeenCalledWith('/dashboard', { replaceUrl: true });
       expect(component.signInForm.value).toEqual({ username: null, password: null });
+    });
+
+    it('applies the stored default account before it navigates', async () => {
+      const order: string[] = [];
+      preferencesService.applyDefaultAccountAtSignIn.mockImplementation(() => {
+        order.push('default-account');
+        return of(undefined);
+      });
+      navigateByUrlSpy.mockImplementation(() => {
+        order.push('navigate');
+        return Promise.resolve(true);
+      });
+      authService.login.mockReturnValue(of({ accessToken: 't' }));
+      component.signInForm.patchValue({ username: 'testuser', password: 'password123' });
+
+      component.onSubmit();
+      await fixture.whenStable();
+
+      expect(order).toEqual(['default-account', 'navigate']);
+    });
+
+    it('waits for the stored default before navigating, then goes where it was going', async () => {
+      const pending = new Subject<void>();
+      preferencesService.applyDefaultAccountAtSignIn.mockReturnValue(pending);
+      authService.login.mockReturnValue(of({ accessToken: 't' }));
+      component.signInForm.patchValue({ username: 'testuser', password: 'password123' });
+
+      component.onSubmit();
+      expect(navigateByUrlSpy).not.toHaveBeenCalled();
+
+      pending.next();
+      pending.complete();
+      expect(navigateByUrlSpy).toHaveBeenCalledWith('/dashboard', { replaceUrl: true });
     });
 
     it('should trim and sanitize username before submit', async () => {

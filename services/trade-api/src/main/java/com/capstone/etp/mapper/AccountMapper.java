@@ -211,4 +211,8 @@ public interface AccountMapper {
 
     @Select("SELECT COUNT(*) FROM instruments WHERE symbol = #{symbol}")
     int countInstrumentsBySymbol(@Param("symbol") String symbol);
+
+    // One instrument's own currency, or null if the symbol is unknown. Read-only; used by the portfolio module.
+    @Select("SELECT TRIM(currency) FROM instruments WHERE symbol = #{symbol}")
+    String getInstrumentCurrency(@Param("symbol") String symbol);
 }

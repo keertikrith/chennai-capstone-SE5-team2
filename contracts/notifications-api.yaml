@@ -1,0 +1,203 @@
+openapi: 3.1.0
+
+info:
+  title: Customer notifications
+  version: 1.0.0
+  summary: The customer's notification history, and the order-outcome messages behind it.
+  description: |
+    Sprint 10 extension, built as the `com.capstone.etp.notifications` package inside the Trade REST API.
+
+    ## What it does
+
+    Consumes `trade-events` (group `notification-service`) and turns `ORDER_FILLED`, `ORDER_REJECTED`
+    and `ORDER_CANCELLED` into a message for the owning customer, delivered on the channel the
+    preferences module holds. It is also the delivery path watchlists uses for a triggered price alert.
+
+    ## What the API is
+
+    **Read-only history, plus marking a message read.** There is no route to create or send a
+    notification. Messages enter only through the `trade-events` listener and the in-process Java
+    interface `com.capstone.etp.notifications.AlertDelivery`. Publishing delivery as a route would let a
+    customer's token send itself, or anyone, a message of its choosing, so it is not one.
+
+    ## Consumption and delivery are separate
+
+    The Kafka offset says a message was **read**. `status` says whether it **reached** the customer:
+
+    | status | meaning |
+    |---|---|
+    | `QUEUED` | durably recorded, waiting to be sent (or to be sent again after a failed attempt) |
+    | `HELD` | the channel the customer chose had no usable contact; kept, looked at again, says why in `statusReason` |
+    | `SENT` | handed to the channel. `statusReason: STUB_DELIVERY` means the channel has no provider here and only a masked log line was written |
+    | `FAILED` | gave up after the attempt limit |
+
+    The offset is committed once the notification is `QUEUED`, never after a provider answers, so a slow
+    or failing provider cannot stall the partition.
+
+    ## Idempotency
+
+    `eventId` of the trade event (or a name-based id derived from the alert) is unique in the ledger.
+    A replayed event records nothing the second time and sends nothing twice.
+
+    ## The channel is resolved, not assumed
+
+    Every send asks the preferences module where this account is to be reached **now**. The channel used
+    is recorded on the notification as `channel` (with `channelSource` = `STORED` or `DEFAULT`), so
+    "it went out on the channel preferences holds" is a record, not a claim. The destination itself is
+    never stored and never returned.
+
+    ## Nothing sensitive in a message
+
+    Messages are built from a fixed list of fields (symbol, side, quantity, prices, a reason code mapped to
+    a sentence). Order ids, account numbers and contact details never reach the text, and a content guard
+    refuses a message that looks like it carries an address, a card-sized number or a credential.
+
+    ## Access control
+
+    Every route compares the verified token's `accountId` claim with `{accountId}`. A mismatch is
+    `403 ACC-403` and is logged. A notification id that belongs to another account is answered exactly like
+    one that does not exist (`404 NTF-404`). An ADMIN token has no exception.
+
+servers:
+  - url: http://localhost:8084
+
+tags:
+  - name: Notifications
+
+security:
+  - bearerAuth: []
+
+paths:
+  /api/v1/accounts/{accountId}/notifications:
+    parameters:
+      - $ref: '#/components/parameters/AccountIdPath'
+    get:
+      tags: [Notifications]
+      operationId: listNotifications
+      summary: Notification history, newest first
+      parameters:
+        - name: unreadOnly
+          in: query
+          schema: { type: boolean, default: false }
+        - name: limit
+          in: query
+          description: At most 100. Values outside 1..100 are clamped.
+          schema: { type: integer, default: 50 }
+      responses:
+        '200':
+          description: The account's notifications.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Notification' }
+        '401': { $ref: '#/components/responses/Unauthorised' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /api/v1/accounts/{accountId}/notifications/unread-count:
+    parameters:
+      - $ref: '#/components/parameters/AccountIdPath'
+    get:
+      tags: [Notifications]
+      operationId: unreadCount
+      summary: How many notifications are unread
+      responses:
+        '200':
+          description: The count.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [unread]
+                properties:
+                  unread: { type: integer }
+        '401': { $ref: '#/components/responses/Unauthorised' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /api/v1/accounts/{accountId}/notifications/{notificationId}/read:
+    parameters:
+      - $ref: '#/components/parameters/AccountIdPath'
+      - name: notificationId
+        in: path
+        required: true
+        schema: { type: integer, format: int64 }
+    post:
+      tags: [Notifications]
+      operationId: markRead
+      summary: Mark one notification read
+      responses:
+        '200':
+          description: The notification, now read.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Notification' }
+        '401': { $ref: '#/components/responses/Unauthorised' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404':
+          description: No such notification for this account.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+              example: { errorCode: NTF-404, message: Notification not found }
+
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+
+  parameters:
+    AccountIdPath:
+      name: accountId
+      in: path
+      required: true
+      schema: { type: integer, format: int64, minimum: 1 }
+
+  responses:
+    Unauthorised:
+      description: Missing, malformed, expired or wrongly signed token.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          example: { errorCode: AUTH-401, message: Unauthorised }
+    Forbidden:
+      description: The token does not hold this account.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          example: { errorCode: ACC-403, message: Sorry you dont have access to this account }
+
+  schemas:
+    Notification:
+      type: object
+      required: [id, kind, subject, body, status, createdAt, read]
+      properties:
+        id: { type: integer, format: int64 }
+        kind:
+          type: string
+          enum: [ORDER_FILLED, ORDER_REJECTED, ORDER_CANCELLED, PRICE_ALERT]
+        subject: { type: string }
+        body: { type: string }
+        status:
+          type: string
+          enum: [QUEUED, HELD, SENT, FAILED]
+        statusReason:
+          type: [string, 'null']
+          description: NO_CONTACT, PREFERENCES_UNAVAILABLE, PROVIDER_ERROR or STUB_DELIVERY.
+        channel:
+          type: [string, 'null']
+          enum: [EMAIL, SMS, PUSH, null]
+          description: The channel preferences resolved when the message was last sent or tried. Null while it is still waiting.
+        channelSource:
+          type: [string, 'null']
+          enum: [STORED, DEFAULT, null]
+        createdAt: { type: string, format: date-time }
+        sentAt: { type: [string, 'null'], format: date-time }
+        read: { type: boolean }
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [errorCode, message]
+      properties:
+        errorCode:
+          type: string
+          enum: [ACC-403, AUTH-401, NTF-404]
+        message: { type: string }
