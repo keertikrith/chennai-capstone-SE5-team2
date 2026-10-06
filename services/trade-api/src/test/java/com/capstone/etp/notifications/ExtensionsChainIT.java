@@ -3,6 +3,7 @@ package com.capstone.etp.notifications;
 import com.capstone.etp.TradeApiApplication;
 import com.capstone.etp.kafka.consumer.QuoteObserver;
 import com.capstone.etp.dto.MarketQuote;
+import com.capstone.etp.alerts.AlertMapper;
 import com.capstone.etp.portfolio.PricingService;
 import com.capstone.etp.portfolio.RealisedPnlBook;
 import com.capstone.etp.security.JwtTestFixture;
@@ -128,6 +129,8 @@ class ExtensionsChainIT {
     RealisedPnlBook realisedBook;
     @Autowired
     PricingService pricing;
+    @Autowired
+    AlertMapper alertMapper;
 
     private final HttpClient http = HttpClient.newHttpClient();
 
@@ -378,6 +381,20 @@ class ExtensionsChainIT {
         long theirs = jdbc.queryForObject("SELECT id FROM price_alerts WHERE account_id = 1 LIMIT 1", Long.class);
         assertEquals(404, call("DELETE", "/api/v1/accounts/5/alerts/" + theirs, 5L, null).status());
         assertEquals(1, call("GET", "/api/v1/accounts/5/alerts", 5L, null).body().size());
+    }
+
+    @Test
+    void everyAlertQueryRunsOnARealDatabase() {
+        // The unit tests use an in-memory mapper, so only this proves the SQL itself. The pending hand-over
+        // query once lost the space before FROM (a text block strips it) and only failed when its timer fired.
+        jdbc.update("INSERT INTO price_alerts (account_id, symbol, direction, threshold, status, delivery_state, triggered_price, triggered_at) "
+                + "VALUES (1, 'AAPL', 'ABOVE', 200, 'TRIGGERED', 'PENDING_HANDOVER', 201, CURRENT_TIMESTAMP - interval '60 seconds')");
+        jdbc.update("INSERT INTO price_alerts (account_id, symbol, direction, threshold) VALUES (1, 'MSFT', 'BELOW', 100)");
+
+        assertEquals(1, alertMapper.findPendingHandover(5, 10).size(), "the fired alert awaiting hand-over");
+        assertEquals(1, alertMapper.findAllActive().size());
+        assertEquals(2, alertMapper.findByAccount(1L).size());
+        assertEquals(0, alertMapper.findPendingHandover(0, 10).size(), "attempt limit respected");
     }
 
     @Test

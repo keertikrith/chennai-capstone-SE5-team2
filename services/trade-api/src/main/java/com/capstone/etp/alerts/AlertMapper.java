@@ -78,8 +78,8 @@ public interface AlertMapper {
     int markHandoverFailed(@Param("id") Long id);
 
     /** Fired alerts whose hand-over is not confirmed, left a moment so the normal path is not raced. */
-    @Select("SELECT " + COLUMNS + """
-             FROM price_alerts
+    // The FROM sits in the single-line string: a text block would strip its leading space and glue it to the last column.
+    @Select("SELECT " + COLUMNS + " FROM price_alerts " + """
              WHERE status = 'TRIGGERED'
                AND delivery_state IN ('PENDING_HANDOVER', 'HANDOVER_FAILED')
                AND delivery_attempts < #{maxAttempts}
