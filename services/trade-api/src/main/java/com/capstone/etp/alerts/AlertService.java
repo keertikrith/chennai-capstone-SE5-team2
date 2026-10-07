@@ -54,24 +54,12 @@ public class AlertService {
         authorizer.ensureOwnAccount(accountId);
         accountService.validateAccountId(accountId);
 
-        String symbol = request.symbol().trim().toUpperCase(Locale.ROOT);
-        if (accountMapper.countInstrumentsBySymbol(symbol) == 0) {
-            throw new InstrumentNotFoundException(symbol, InstrumentNotFoundException.Reason.UNKNOWN_SYMBOL);
-        }
+        String symbol = normalisedSymbol(request.symbol());
+        ensureKnownSymbol(symbol);
+        AlertDirection direction = request.direction().normalised();
+        ensureNotCrossedYet(symbol, direction, request.threshold());
 
-        // An alert whose level the price has already passed would fire on the next quote and tell the
-        // customer nothing they did not know. Refuse it and say why.
-        Optional<MarketQuote> current = quoteCache.get(symbol);
-        if (current.isPresent() && current.get().getPrice() != null
-                && !Boolean.TRUE.equals(current.get().getStale())
-                && request.direction().isCrossedBy(current.get().getPrice(), request.threshold())) {
-            throw new ModuleException(HttpStatus.UNPROCESSABLE_ENTITY, "VAL-422",
-                    "The price of " + symbol + " is already "
-                            + (request.direction() == AlertDirection.ABOVE ? "above " : "below ")
-                            + "that level. Choose a level the price has not reached yet");
-        }
-
-        Long id = mapper.insertWithinCap(accountId, symbol, request.direction(), request.threshold(), cap);
+        Long id = mapper.insertWithinCap(accountId, symbol, direction, request.threshold(), cap);
         if (id == null) {
             throw new ModuleException(HttpStatus.CONFLICT, "ALR-409",
                     "You can keep at most " + cap + " alerts. Remove one to add another");
@@ -80,8 +68,87 @@ public class AlertService {
         PriceAlert created = mapper.findByIdAndAccount(id, accountId);
         index.add(created);
         log.info("[ALERTS] created alert {} accountId={} symbol={} {} {}",
-                id, accountId, symbol, request.direction(), request.threshold());
+                id, accountId, symbol, direction, request.threshold());
         return AlertResponse.from(created);
+    }
+
+    public AlertResponse update(Long accountId, Long alertId, UpdateAlertRequest request) {
+        authorizer.ensureOwnAccount(accountId);
+        accountService.validateAccountId(accountId);
+
+        PriceAlert current = mapper.findByIdAndAccount(alertId, accountId);
+        if (current == null) {
+            throw notFound();
+        }
+        if (current.getStatus() == AlertStatus.TRIGGERED) {
+            throw new ModuleException(HttpStatus.CONFLICT, "ALR-409",
+                    "A fired alert cannot be edited");
+        }
+
+        String symbol = normalisedSymbol(request.symbol());
+        ensureKnownSymbol(symbol);
+        AlertDirection direction = request.direction().normalised();
+        ensureNotCrossedYet(symbol, direction, request.threshold());
+
+        if (mapper.updateEditable(alertId, accountId, symbol, direction, request.threshold()) == 0) {
+            throw new ModuleException(HttpStatus.CONFLICT, "ALR-409",
+                    "This alert cannot be edited right now");
+        }
+
+        PriceAlert updated = mapper.findByIdAndAccount(alertId, accountId);
+        if (updated == null) {
+            throw notFound();
+        }
+        if (current.getStatus() == AlertStatus.ACTIVE) {
+            index.remove(current.getSymbol(), current.getId());
+            index.add(updated);
+        }
+        return AlertResponse.from(updated);
+    }
+
+    public AlertResponse setEnabled(Long accountId, Long alertId, boolean enabled) {
+        authorizer.ensureOwnAccount(accountId);
+        accountService.validateAccountId(accountId);
+
+        PriceAlert current = mapper.findByIdAndAccount(alertId, accountId);
+        if (current == null) {
+            throw notFound();
+        }
+        if (current.getStatus() == AlertStatus.TRIGGERED) {
+            throw new ModuleException(HttpStatus.CONFLICT, "ALR-409",
+                    "A fired alert cannot be enabled or disabled");
+        }
+
+        if (enabled) {
+            if (current.getStatus() == AlertStatus.ACTIVE) {
+                return AlertResponse.from(current);
+            }
+            ensureNotCrossedYet(current.getSymbol(), current.getDirection(), current.getThreshold());
+            if (mapper.enable(alertId, accountId) == 0) {
+                throw new ModuleException(HttpStatus.CONFLICT, "ALR-409",
+                        "This alert could not be enabled");
+            }
+            PriceAlert updated = mapper.findByIdAndAccount(alertId, accountId);
+            if (updated == null) {
+                throw notFound();
+            }
+            index.add(updated);
+            return AlertResponse.from(updated);
+        }
+
+        if (current.getStatus() == AlertStatus.CANCELLED) {
+            return AlertResponse.from(current);
+        }
+        if (mapper.disable(alertId, accountId) == 0) {
+            throw new ModuleException(HttpStatus.CONFLICT, "ALR-409",
+                    "This alert could not be disabled");
+        }
+        index.remove(current.getSymbol(), current.getId());
+        PriceAlert updated = mapper.findByIdAndAccount(alertId, accountId);
+        if (updated == null) {
+            throw notFound();
+        }
+        return AlertResponse.from(updated);
     }
 
 
@@ -114,5 +181,26 @@ public class AlertService {
 
     private static ModuleException notFound() {
         return new ModuleException(HttpStatus.NOT_FOUND, "ALR-404", "Alert not found");
+    }
+
+    private static String normalisedSymbol(String symbol) {
+        return symbol.trim().toUpperCase(Locale.ROOT);
+    }
+
+    private void ensureKnownSymbol(String symbol) {
+        if (accountMapper.countInstrumentsBySymbol(symbol) == 0) {
+            throw new InstrumentNotFoundException(symbol, InstrumentNotFoundException.Reason.UNKNOWN_SYMBOL);
+        }
+    }
+
+    private void ensureNotCrossedYet(String symbol, AlertDirection direction, java.math.BigDecimal threshold) {
+        Optional<MarketQuote> current = quoteCache.get(symbol);
+        if (current.isPresent() && current.get().getPrice() != null
+                && !Boolean.TRUE.equals(current.get().getStale())
+                && direction.isCrossedBy(current.get().getPrice(), threshold)) {
+            throw new ModuleException(HttpStatus.UNPROCESSABLE_ENTITY, "VAL-422",
+                    "The price of " + symbol + " is already "
+                            + direction.relationText() + " that level. Choose a level the price has not reached yet");
+        }
     }
 }

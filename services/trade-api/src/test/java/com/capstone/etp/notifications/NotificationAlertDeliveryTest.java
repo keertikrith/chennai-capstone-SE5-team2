@@ -78,6 +78,16 @@ class NotificationAlertDeliveryTest {
     }
 
     @Test
+    void anEqualAlertReadsAsReachingThePrice() {
+        AlertDeliveryRequest equal = new AlertDeliveryRequest(1L, 10L, "NVDA", AlertDeliveryRequest.Direction.EQUALS,
+                new BigDecimal("450"), new BigDecimal("450"), Instant.now());
+
+        Notification n = ledger.rows.get(delivery.deliver(equal).notificationId());
+
+        assertTrue(n.getBody().contains("NVDA reached 450.00"));
+    }
+
+    @Test
     void whenTheMessageCannotBeRecordedItRaisesSoTheCallerKeepsTheAlert() {
         NotificationMapper broken = mock(NotificationMapper.class);
         when(broken.insertIfAbsent(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),

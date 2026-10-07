@@ -6,7 +6,7 @@ inside the Trade REST API.
 | | |
 |---|---|
 | Contract | `contracts/alerts-api.yaml` |
-| Routes | `GET, POST /api/v1/accounts/{id}/alerts`, `DELETE .../{alertId}` |
+| Routes | `GET, POST /api/v1/accounts/{id}/alerts`, `PUT, DELETE .../{alertId}`, `PATCH .../{alertId}/enabled` |
 | Watchlist | the account's existing watchlist routes (`/watchlist`, `/watchlist/quotes`); an entry is a reference to an instrument, not a position |
 | Table | `price_alerts` |
 | Kafka | consumes `market-data`, group **`watchlist-service`** (starts from `latest`), through the shared `MarketDataConsumer` and the `QuoteObserver` seam |
@@ -14,7 +14,7 @@ inside the Trade REST API.
 
 ## Behaviour
 
-* **Crossed:** ABOVE fires on the first non-stale quote at or above the level; BELOW at or below. An alert whose level has already been crossed is refused at creation.
+* **Crossed:** `GT`, `GTE`, `LT`, `LTE`, `EQ` are supported (`ABOVE` and `BELOW` are kept as aliases of `GTE` and `LTE`). An alert whose level has already been crossed is refused at creation.
 * **Fires once** and deactivates: `ACTIVE` to `TRIGGERED` in a guarded update (decision 0007).
 * **Per-symbol index:** active alerts are held in memory by symbol, so a quote nobody cares about costs one hash lookup. It is a cache of the table, rebuilt at start and every 30 s.
 * **Delivery:** a fired alert is handed to `AlertDelivery`. If that raises, the alert stays `TRIGGERED` with `HANDOVER_FAILED`, is retried every 30 s up to 5 times, and the customer sees it (decision 0008).

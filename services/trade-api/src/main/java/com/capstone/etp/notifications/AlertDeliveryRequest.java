@@ -16,6 +16,7 @@ public record AlertDeliveryRequest(
     /** The way the price had to move to cross the threshold. Owned here so notifications needs nothing from alerts. */
     public enum Direction {
         ABOVE,
-        BELOW
+        BELOW,
+        EQUALS
     }
 }

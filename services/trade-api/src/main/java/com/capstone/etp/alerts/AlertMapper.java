@@ -42,6 +42,34 @@ public interface AlertMapper {
     @Update("UPDATE price_alerts SET status = 'CANCELLED' WHERE id = #{id} AND account_id = #{accountId} AND status = 'ACTIVE'")
     int cancel(@Param("id") Long id, @Param("accountId") Long accountId);
 
+    @Update("""
+            UPDATE price_alerts
+               SET symbol = #{symbol}, direction = #{direction}, threshold = #{threshold}
+             WHERE id = #{id} AND account_id = #{accountId}
+               AND status IN ('ACTIVE', 'CANCELLED')
+               AND delivery_state = 'NONE'""")
+    int updateEditable(@Param("id") Long id,
+                       @Param("accountId") Long accountId,
+                       @Param("symbol") String symbol,
+                       @Param("direction") AlertDirection direction,
+                       @Param("threshold") BigDecimal threshold);
+
+    @Update("""
+            UPDATE price_alerts
+               SET status = 'ACTIVE'
+             WHERE id = #{id} AND account_id = #{accountId}
+               AND status = 'CANCELLED'
+               AND delivery_state = 'NONE'""")
+    int enable(@Param("id") Long id, @Param("accountId") Long accountId);
+
+    @Update("""
+            UPDATE price_alerts
+               SET status = 'CANCELLED'
+             WHERE id = #{id} AND account_id = #{accountId}
+               AND status = 'ACTIVE'
+               AND delivery_state = 'NONE'""")
+    int disable(@Param("id") Long id, @Param("accountId") Long accountId);
+
     @Delete("""
             DELETE FROM price_alerts
              WHERE id = #{id} AND account_id = #{accountId}

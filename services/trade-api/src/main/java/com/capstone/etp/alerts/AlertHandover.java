@@ -29,9 +29,7 @@ class AlertHandover {
                     accountId,
                     alertId,
                     symbol,
-                    direction == AlertDirection.ABOVE
-                            ? AlertDeliveryRequest.Direction.ABOVE
-                            : AlertDeliveryRequest.Direction.BELOW,
+                    toDeliveryDirection(direction),
                     threshold,
                     price,
                     observedAt));
@@ -49,5 +47,14 @@ class AlertHandover {
             }
             return false;
         }
+    }
+
+    private static AlertDeliveryRequest.Direction toDeliveryDirection(AlertDirection direction) {
+        return switch (direction.normalised()) {
+            case GT, GTE -> AlertDeliveryRequest.Direction.ABOVE;
+            case LT, LTE -> AlertDeliveryRequest.Direction.BELOW;
+            case EQ -> AlertDeliveryRequest.Direction.EQUALS;
+            default -> throw new IllegalStateException("Unexpected alert direction: " + direction);
+        };
     }
 }

@@ -42,14 +42,22 @@ class NotificationAlertDelivery implements AlertDelivery {
     }
 
     static String subject(AlertDeliveryRequest r) {
-        return "Price alert: " + r.symbol() + (r.direction() == AlertDeliveryRequest.Direction.ABOVE
-                ? " is above " : " is below ") + plain(r.threshold());
+        return switch (r.direction()) {
+            case ABOVE -> "Price alert: " + r.symbol() + " is above " + plain(r.threshold());
+            case BELOW -> "Price alert: " + r.symbol() + " is below " + plain(r.threshold());
+            case EQUALS -> "Price alert: " + r.symbol() + " is equal to " + plain(r.threshold());
+        };
     }
 
     static String body(AlertDeliveryRequest r) {
-        return r.symbol() + (r.direction() == AlertDeliveryRequest.Direction.ABOVE
-                ? " rose above " : " fell below ")
-                + plain(r.threshold()) + ". The latest price is " + plain(r.price()) + ".";
+        return switch (r.direction()) {
+            case ABOVE -> r.symbol() + " rose above " + plain(r.threshold())
+                    + ". The latest price is " + plain(r.price()) + ".";
+            case BELOW -> r.symbol() + " fell below " + plain(r.threshold())
+                    + ". The latest price is " + plain(r.price()) + ".";
+            case EQUALS -> r.symbol() + " reached " + plain(r.threshold())
+                    + ". The latest price is " + plain(r.price()) + ".";
+        };
     }
 
     private static String plain(BigDecimal value) {
