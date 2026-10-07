@@ -17,8 +17,11 @@ info:
 
     ## What "crossed" means
 
-    * `ABOVE` fires on the first quote whose price is **at or above** the threshold.
-    * `BELOW` fires on the first quote whose price is **at or below** it.
+    * `GT` fires on the first quote whose price is **greater than** the threshold.
+    * `GTE` (and legacy `ABOVE`) fires on the first quote whose price is **at or above** it.
+    * `LT` fires on the first quote whose price is **less than** the threshold.
+    * `LTE` (and legacy `BELOW`) fires on the first quote whose price is **at or below** it.
+    * `EQ` fires when a quote equals the threshold exactly.
     * A quote the provider flagged `stale` is ignored: it is not evidence the market crossed anything.
     * An alert is **refused at creation** if the current (non-stale) price has already crossed the level,
       so "crossed" always means the price moved through the level after the customer asked.
@@ -151,6 +154,77 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ErrorResponse' }
+    put:
+      tags: [Alerts]
+      operationId: updateAlert
+      summary: Edit an active or disabled alert
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateAlert' }
+      responses:
+        '200':
+          description: Updated.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Alert' }
+        '401': { $ref: '#/components/responses/Unauthorised' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404':
+          description: No such alert on this account.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+              example: { errorCode: ALR-404, message: Alert not found }
+        '409':
+          description: Triggered or otherwise not editable.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '422': { $ref: '#/components/responses/InvalidInput' }
+
+  /api/v1/accounts/{accountId}/alerts/{alertId}/enabled:
+    parameters:
+      - $ref: '#/components/parameters/AccountIdPath'
+      - name: alertId
+        in: path
+        required: true
+        schema: { type: integer, format: int64 }
+    patch:
+      tags: [Alerts]
+      operationId: setAlertEnabled
+      summary: Enable or disable an alert
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [enabled]
+              additionalProperties: false
+              properties:
+                enabled: { type: boolean }
+      responses:
+        '200':
+          description: Updated state.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Alert' }
+        '401': { $ref: '#/components/responses/Unauthorised' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404':
+          description: No such alert on this account.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+              example: { errorCode: ALR-404, message: Alert not found }
+        '409':
+          description: Triggered alert cannot be toggled.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '422': { $ref: '#/components/responses/InvalidInput' }
 
 components:
   securitySchemes:
@@ -195,7 +269,7 @@ components:
           type: string
           maxLength: 20
           pattern: '^[A-Za-z0-9.:^=\-]+$'
-        direction: { type: string, enum: [ABOVE, BELOW] }
+        direction: { type: string, enum: [GT, GTE, LT, LTE, EQ, ABOVE, BELOW] }
         threshold:
           type: number
           exclusiveMinimum: 0
@@ -206,7 +280,7 @@ components:
       properties:
         id: { type: integer, format: int64 }
         symbol: { type: string }
-        direction: { type: string, enum: [ABOVE, BELOW] }
+        direction: { type: string, enum: [GT, GTE, LT, LTE, EQ, ABOVE, BELOW] }
         threshold: { type: number }
         status: { type: string, enum: [ACTIVE, TRIGGERED, CANCELLED] }
         deliveryState: { type: string, enum: [NONE, PENDING_HANDOVER, HANDED_OVER, HANDOVER_FAILED] }
