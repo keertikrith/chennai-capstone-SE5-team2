@@ -13,6 +13,14 @@
               [attr.aria-selected]="filter() === 'UNREAD'" (click)="setFilter('UNREAD')" data-testid="filter-unread">
         Unread ({{ unreadCount() }})
       </button>
+      <button type="button" role="tab" class="tab" [class.tab--on]="filter() === 'PRICE_ALERT'"
+              [attr.aria-selected]="filter() === 'PRICE_ALERT'" (click)="setFilter('PRICE_ALERT')" data-testid="filter-price-alert">
+        Price alerts
+      </button>
+      <button type="button" role="tab" class="tab" [class.tab--on]="filter() === 'ORDER_EVENTS'"
+              [attr.aria-selected]="filter() === 'ORDER_EVENTS'" (click)="setFilter('ORDER_EVENTS')" data-testid="filter-order-events">
+        Orders
+      </button>
     </div>
   </header>
 
@@ -31,6 +39,10 @@
     <article class="card empty" data-testid="notifications-empty">
       @if (filter() === 'UNREAD') {
         <p>You are all caught up.</p>
+      } @else if (filter() === 'PRICE_ALERT') {
+        <p>No price alert notifications yet.</p>
+      } @else if (filter() === 'ORDER_EVENTS') {
+        <p>No order notifications yet.</p>
       } @else {
         <p>No messages yet. We will tell you here when an order fills, is rejected or is cancelled, and when a price alert fires.</p>
       }

@@ -4,7 +4,7 @@ import { DatePipe, DecimalPipe } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, ValidationErrors, Validators, AbstractControl } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { timer } from 'rxjs';
+import { of, switchMap, timer } from 'rxjs';
 import { AlertDirection, MAX_ALERTS_PER_ACCOUNT, PriceAlert } from '../../../core/models/alert.model';
 import { AccountContextService } from '../../../core/services/account-context.service';
 import { AlertService } from '../../../core/services/alert.service';
@@ -13,6 +13,18 @@ import { HomeCurrencyService } from '../../../core/services/home-currency.servic
 
 // How often the list looks again, so a fired alert shows up without a manual refresh.
 export const ALERT_REFRESH_MS = 15_000;
+type AlertFilter = 'ALL' | 'ENABLED' | 'DISABLED' | 'TRIGGERED';
+type AlertHistoryCard = { title: string; detail: string };
+
+type OperatorOption = { value: AlertDirection; symbol: string; label: string };
+
+const OPERATOR_OPTIONS: OperatorOption[] = [
+  { value: 'GT', symbol: '>', label: 'greater than' },
+  { value: 'GTE', symbol: '>=', label: 'greater than or equal to' },
+  { value: 'LT', symbol: '<', label: 'less than' },
+  { value: 'LTE', symbol: '<=', label: 'less than or equal to' },
+  { value: 'EQ', symbol: '==', label: 'equal to' }
+];
 
 function positiveAmount(control: AbstractControl<string>): ValidationErrors | null {
   const value = control.value.trim();
@@ -46,14 +58,20 @@ export class AlertsComponent {
   protected readonly creating = signal(false);
   protected readonly busyId = signal<number | null>(null);
   protected readonly alerts = signal<PriceAlert[]>([]);
+  protected readonly filter = signal<AlertFilter>('ALL');
+  protected readonly showDialog = signal(false);
+  protected readonly editingId = signal<number | null>(null);
+  protected readonly historyId = signal<number | null>(null);
+  protected readonly operatorOptions = OPERATOR_OPTIONS;
 
   /** Anything the platform lists as tradable can have an alert; the server refuses a symbol it does not know. */
   protected readonly instruments = computed(() => this.home.instrumentList().filter((item) => item.tradable));
   protected readonly remaining = computed(() => Math.max(0, this.cap - this.alerts().length));
+  protected readonly visibleAlerts = computed(() => this.alerts().filter((alert) => this.matchesFilter(alert)));
 
   protected readonly form = this.formBuilder.nonNullable.group({
     symbol: ['', [Validators.required]],
-    direction: ['ABOVE' as AlertDirection, [Validators.required]],
+    direction: ['GT' as AlertDirection, [Validators.required]],
     threshold: ['', [Validators.required, positiveAmount]]
   });
 
@@ -66,6 +84,10 @@ export class AlertsComponent {
     }
     this.load();
     timer(ALERT_REFRESH_MS, ALERT_REFRESH_MS).pipe(takeUntilDestroyed()).subscribe(() => this.load(true));
+  }
+
+  protected setFilter(filter: AlertFilter): void {
+    this.filter.set(filter);
   }
 
   protected load(quiet = false): void {
@@ -90,6 +112,41 @@ export class AlertsComponent {
   }
 
   protected create(): void {
+    this.save();
+  }
+
+  protected openCreate(): void {
+    this.createError.set(null);
+    this.editingId.set(null);
+    this.form.controls.direction.setValue('GT');
+    this.form.controls.threshold.reset('');
+    this.showDialog.set(true);
+  }
+
+  protected openEdit(alert: PriceAlert): void {
+    if (!this.canEdit(alert)) {
+      return;
+    }
+    this.createError.set(null);
+    this.editingId.set(alert.id);
+    this.form.setValue({
+      symbol: alert.symbol,
+      direction: this.normalisedDirection(alert.direction),
+      threshold: String(alert.threshold)
+    });
+    this.showDialog.set(true);
+  }
+
+  protected closeDialog(): void {
+    if (this.creating()) {
+      return;
+    }
+    this.showDialog.set(false);
+    this.editingId.set(null);
+    this.form.markAsPristine();
+  }
+
+  protected save(): void {
     this.createError.set(null);
     this.form.markAllAsTouched();
     if (this.form.invalid || this.creating()) {
@@ -98,37 +155,49 @@ export class AlertsComponent {
     const value = this.form.getRawValue();
 
     this.creating.set(true);
-    this.alertService
-      .create(this.accountContext.getCurrentAccount().accountNumericId, {
-        symbol: value.symbol.trim().toUpperCase(),
-        direction: value.direction,
-        threshold: Number(value.threshold)
-      })
-      .subscribe({
-        next: (created) => {
-          this.alerts.update((alerts) => [created, ...alerts]);
-          this.form.controls.threshold.reset('');
-          this.creating.set(false);
-        },
-        error: (error: unknown) => {
-          this.creating.set(false);
-          this.createError.set(this.createMessage(error));
-        }
-      });
+    const request = {
+      symbol: value.symbol.trim().toUpperCase(),
+      direction: value.direction,
+      threshold: Number(value.threshold)
+    };
+    const accountId = this.accountContext.getCurrentAccount().accountNumericId;
+    const editingId = this.editingId();
+    const submit = editingId === null
+      ? this.alertService.create(accountId, request)
+      : this.alertService.update(accountId, editingId, request);
+
+    submit.subscribe({
+      next: (saved) => {
+        this.alerts.update((alerts) =>
+          editingId === null ? [saved, ...alerts] : alerts.map((entry) => (entry.id === saved.id ? saved : entry))
+        );
+        this.form.controls.threshold.reset('');
+        this.creating.set(false);
+        this.showDialog.set(false);
+        this.editingId.set(null);
+      },
+      error: (error: unknown) => {
+        this.creating.set(false);
+        this.createError.set(this.createMessage(error));
+      }
+    });
   }
 
   /** Cancels an active alert, or removes a finished one. */
-  protected remove(alert: PriceAlert): void {
+  protected delete(alert: PriceAlert): void {
     if (this.busyId() !== null) {
       return;
     }
     this.busyId.set(alert.id);
     this.actionError.set(null);
+    const accountId = this.accountContext.getCurrentAccount().accountNumericId;
 
-    this.alertService.remove(this.accountContext.getCurrentAccount().accountNumericId, alert.id).subscribe({
+    this.alertService.remove(accountId, alert.id).pipe(
+      switchMap((result) => result.status === 'CANCELLED' ? this.alertService.remove(accountId, alert.id) : of(result))
+    ).subscribe({
       next: () => {
         this.busyId.set(null);
-        // The server decides what happened (cancelled, removed, or fired meanwhile): show the truth.
+        this.historyId.update((id) => (id === alert.id ? null : id));
         this.load(true);
       },
       error: (error: unknown) => {
@@ -139,26 +208,65 @@ export class AlertsComponent {
     });
   }
 
-  protected canRemove(alert: PriceAlert): boolean {
-    // A fired alert whose hand-over is unresolved is kept so the customer can see it was not delivered.
+  protected setEnabled(alert: PriceAlert, event: Event): void {
+    if (this.busyId() !== null || alert.status === 'TRIGGERED') {
+      return;
+    }
+    const input = event.target as HTMLInputElement;
+    this.busyId.set(alert.id);
+    this.actionError.set(null);
+    this.alertService.setEnabled(this.accountContext.getCurrentAccount().accountNumericId, alert.id, input.checked).subscribe({
+      next: (updated) => {
+        this.alerts.update((alerts) => alerts.map((entry) => (entry.id === updated.id ? updated : entry)));
+        this.busyId.set(null);
+      },
+      error: (error: unknown) => {
+        this.busyId.set(null);
+        this.actionError.set(this.errorMessages.getMessage(error));
+        this.load(true);
+      }
+    });
+  }
+
+  protected canDelete(alert: PriceAlert): boolean {
     return !(alert.status === 'TRIGGERED' && (alert.deliveryState === 'PENDING_HANDOVER' || alert.deliveryState === 'HANDOVER_FAILED'));
   }
 
-  protected removeLabel(alert: PriceAlert): string {
-    return alert.status === 'ACTIVE' ? 'Cancel' : 'Remove';
+  protected canEdit(alert: PriceAlert): boolean {
+    return alert.status !== 'TRIGGERED';
+  }
+
+  protected isEnabled(alert: PriceAlert): boolean {
+    return alert.status === 'ACTIVE';
+  }
+
+  protected statusLabel(alert: PriceAlert): string {
+    if (alert.status === 'ACTIVE') {
+      return 'Enabled';
+    }
+    if (alert.status === 'CANCELLED') {
+      return 'Disabled';
+    }
+    return 'Triggered';
+  }
+
+  protected toggleHistory(alert: PriceAlert): void {
+    this.historyId.update((id) => (id === alert.id ? null : alert.id));
   }
 
   protected describe(alert: PriceAlert): string {
-    return `${alert.direction === 'ABOVE' ? 'rises to or above' : 'falls to or below'} ${alert.threshold}`;
+    const direction = this.normalisedDirection(alert.direction);
+    const symbol = this.operatorSymbol(direction);
+    return `${symbol} ${alert.threshold}`;
   }
 
   /** What became of the alert, in words: has it fired, and if so, were they told. */
   protected statusText(alert: PriceAlert): string {
     switch (alert.status) {
       case 'ACTIVE':
-        return 'Watching';
+        return 'Enabled';
       case 'CANCELLED':
-        return 'Cancelled';
+        return 'Disabled';
       case 'TRIGGERED':
         switch (alert.deliveryState) {
           case 'HANDED_OVER':
@@ -168,6 +276,88 @@ export class AlertsComponent {
           default:
             return 'Fired. The message is being queued.';
         }
+    }
+  }
+
+  protected history(alert: PriceAlert): string[] {
+    const entries = [`Created at ${new Date(alert.createdAt).toLocaleString()}`];
+    if (alert.status === 'CANCELLED') {
+      entries.push('Disabled by user');
+    }
+    if (alert.status === 'TRIGGERED') {
+      entries.push(`Triggered at ${new Date(alert.triggeredAt ?? alert.createdAt).toLocaleString()}`);
+      if (alert.deliveryState === 'HANDED_OVER') {
+        entries.push('Notification recorded in Inbox');
+      } else if (alert.deliveryState === 'HANDOVER_FAILED') {
+        entries.push('Notification handover failed; retrying');
+      } else {
+        entries.push('Notification handover pending');
+      }
+    }
+    return entries;
+  }
+
+  protected historyCards(alert: PriceAlert): AlertHistoryCard[] {
+    const cards: AlertHistoryCard[] = [];
+    if (alert.status === 'TRIGGERED') {
+      const triggeredAt = alert.triggeredAt ? new Date(alert.triggeredAt).toLocaleString() : 'n/a';
+      const triggeredPrice = alert.triggeredPrice === null ? 'n/a' : `${alert.triggeredPrice}`;
+      cards.push({
+        title: 'Alert triggered',
+        detail: `Triggered at ${triggeredAt} when market price was ${triggeredPrice} (${this.currencyForAlert(alert)}).`
+      });
+      if (alert.deliveryState === 'HANDED_OVER') {
+        cards.push({ title: 'Notification status', detail: 'Notification recorded in Inbox.' });
+      } else if (alert.deliveryState === 'HANDOVER_FAILED') {
+        cards.push({ title: 'Notification status', detail: 'Notification handover failed; retrying.' });
+      } else {
+        cards.push({ title: 'Notification status', detail: 'Notification handover pending.' });
+      }
+    } else {
+      cards.push({ title: 'Not triggered yet', detail: 'This alert has not triggered yet.' });
+    }
+    return cards;
+  }
+
+  protected isEditing(alert: PriceAlert): boolean {
+    return this.editingId() === alert.id;
+  }
+
+  protected operatorSymbol(direction: AlertDirection): string {
+    const normalised = this.normalisedDirection(direction);
+    const option = this.operatorOptions.find((entry) => entry.value === normalised);
+    return option?.symbol ?? '>=';
+  }
+
+  protected thresholdCurrency(): string {
+    const symbol = this.form.controls.symbol.value.trim().toUpperCase();
+    return this.home.currencyOf(symbol) ?? this.home.homeCurrency() ?? 'USD';
+  }
+
+  protected currencyForAlert(alert: PriceAlert): string {
+    return this.home.currencyOf(alert.symbol) ?? this.home.homeCurrency() ?? 'USD';
+  }
+
+  private normalisedDirection(direction: AlertDirection): AlertDirection {
+    if (direction === 'ABOVE') {
+      return 'GTE';
+    }
+    if (direction === 'BELOW') {
+      return 'LTE';
+    }
+    return direction;
+  }
+
+  private matchesFilter(alert: PriceAlert): boolean {
+    switch (this.filter()) {
+      case 'ENABLED':
+        return alert.status === 'ACTIVE';
+      case 'DISABLED':
+        return alert.status === 'CANCELLED';
+      case 'TRIGGERED':
+        return alert.status === 'TRIGGERED';
+      default:
+        return true;
     }
   }
 

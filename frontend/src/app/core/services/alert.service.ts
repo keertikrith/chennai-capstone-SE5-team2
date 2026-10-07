@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { API_ENDPOINTS } from '../config/api-endpoints';
-import { CreateAlertRequest, PriceAlert } from '../models/alert.model';
+import { CreateAlertRequest, PriceAlert, UpdateAlertRequest } from '../models/alert.model';
 
 // Price alerts. A fired alert is delivered by the platform through notifications; nothing here sends a message.
 @Injectable({ providedIn: 'root' })
@@ -19,6 +19,14 @@ export class AlertService {
 
   create(accountId: number, request: CreateAlertRequest): Observable<PriceAlert> {
     return this.http.post<PriceAlert>(this.base(accountId), request);
+  }
+
+  update(accountId: number, alertId: number, request: UpdateAlertRequest): Observable<PriceAlert> {
+    return this.http.put<PriceAlert>(`${this.base(accountId)}/${alertId}`, request);
+  }
+
+  setEnabled(accountId: number, alertId: number, enabled: boolean): Observable<PriceAlert> {
+    return this.http.patch<PriceAlert>(`${this.base(accountId)}/${alertId}/enabled`, { enabled });
   }
 
   // Cancels an active alert, or removes a finished one.

@@ -12,6 +12,7 @@ import { NotificationService } from '../../../core/services/notification.service
 export const INBOX_REFRESH_MS = 30_000;
 
 type Filter = 'ALL' | 'UNREAD';
+type ExtendedFilter = Filter | 'PRICE_ALERT' | 'ORDER_EVENTS';
 
 const KIND_LABELS: Record<NotificationKind, string> = {
   ORDER_FILLED: 'Order filled',
@@ -47,13 +48,22 @@ export class NotificationsComponent {
   protected readonly error = signal<string | null>(null);
   protected readonly actionError = signal<string | null>(null);
   protected readonly items = signal<NotificationItem[]>([]);
-  protected readonly filter = signal<Filter>('ALL');
+  protected readonly filter = signal<ExtendedFilter>('ALL');
   protected readonly busyId = signal<number | null>(null);
 
   protected readonly unreadCount = computed(() => this.items().filter((item) => !item.read).length);
-  protected readonly visible = computed(() =>
-    this.filter() === 'UNREAD' ? this.items().filter((item) => !item.read) : this.items()
-  );
+  protected readonly visible = computed(() => this.items().filter((item) => {
+    switch (this.filter()) {
+      case 'UNREAD':
+        return !item.read;
+      case 'PRICE_ALERT':
+        return item.kind === 'PRICE_ALERT';
+      case 'ORDER_EVENTS':
+        return item.kind !== 'PRICE_ALERT';
+      default:
+        return true;
+    }
+  }));
 
   constructor() {
     this.load();
@@ -61,7 +71,7 @@ export class NotificationsComponent {
     timer(INBOX_REFRESH_MS, INBOX_REFRESH_MS).pipe(takeUntilDestroyed()).subscribe(() => this.load(true));
   }
 
-  protected setFilter(filter: Filter): void {
+  protected setFilter(filter: ExtendedFilter): void {
     this.filter.set(filter);
   }
 

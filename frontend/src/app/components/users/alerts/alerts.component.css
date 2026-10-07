@@ -2,6 +2,13 @@
   display: block;
 }
 
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .head h1 {
   margin: 0 0 2px;
 }
@@ -10,21 +17,84 @@
   margin: 0;
 }
 
-.create {
-  display: grid;
-  gap: 10px;
+.filters {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  margin-bottom: 12px;
 }
 
-.create__row {
-  display: grid;
-  grid-template-columns: minmax(180px, 2fr) minmax(150px, 1.2fr) minmax(110px, 1fr) auto;
-  gap: 10px;
-  align-items: end;
+.tab {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 6px 12px;
+  background: transparent;
+  cursor: pointer;
 }
 
-.field {
+.tab--on {
+  background-color: var(--new-bg);
+  color: var(--new);
+  border-color: var(--new);
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.panel-head h2 {
+  margin: 0;
+}
+
+.dialog-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.dialog-line + .dialog-line {
+  margin-top: 10px;
+}
+
+.dialog-line select,
+.dialog-line input {
+  min-width: 140px;
+}
+
+.currency-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted-ink);
+}
+
+.dialog-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
   display: grid;
-  gap: 6px;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 20;
+}
+
+.dialog {
+  width: min(900px, calc(100vw - 24px));
 }
 
 .end {
@@ -62,6 +132,46 @@
   font-size: 12px;
 }
 
+.switch {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.history-row td {
+  background: var(--surface);
+}
+
+.history-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.history-card {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px;
+  background: var(--surface);
+}
+
+.history-card h4 {
+  margin: 0 0 4px;
+  font-size: 13px;
+}
+
+.history-card p {
+  margin: 0;
+  font-size: 12px;
+}
+
 .empty {
   text-align: center;
   padding: 28px 16px;
@@ -72,7 +182,12 @@
 }
 
 @media (max-width: 760px) {
-  .create__row {
-    grid-template-columns: 1fr;
+  .head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .actions {
+    flex-direction: column;
   }
 }

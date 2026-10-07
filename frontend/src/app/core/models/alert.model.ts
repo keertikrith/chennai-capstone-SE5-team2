@@ -1,4 +1,4 @@
-export type AlertDirection = 'ABOVE' | 'BELOW';
+export type AlertDirection = 'GT' | 'GTE' | 'LT' | 'LTE' | 'EQ' | 'ABOVE' | 'BELOW';
 
 export type AlertStatus = 'ACTIVE' | 'TRIGGERED' | 'CANCELLED';
 
@@ -17,6 +17,12 @@ export interface PriceAlert {
 }
 
 export interface CreateAlertRequest {
+  symbol: string;
+  direction: AlertDirection;
+  threshold: number;
+}
+
+export interface UpdateAlertRequest {
   symbol: string;
   direction: AlertDirection;
   threshold: number;
