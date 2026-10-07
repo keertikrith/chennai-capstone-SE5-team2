@@ -74,7 +74,7 @@ CREATE TABLE IF NOT EXISTS price_alerts (
     created_at          TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT ck_price_alerts_direction
-        CHECK (direction IN ('ABOVE', 'BELOW')),
+        CHECK (direction IN ('ABOVE', 'BELOW', 'GT', 'GTE', 'LT', 'LTE', 'EQ')),
     CONSTRAINT ck_price_alerts_threshold
         CHECK (threshold > 0),
     CONSTRAINT ck_price_alerts_status
