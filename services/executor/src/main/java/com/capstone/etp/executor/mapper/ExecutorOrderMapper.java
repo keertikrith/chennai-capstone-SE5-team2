@@ -115,6 +115,14 @@ public interface ExecutorOrderMapper {
                                                                 JOIN instruments i ON i.id = o.instrument_id
                                                                 WHERE i.is_tradable = true
                                                                         AND o.status = 'NEW'
+
+                                                               UNION
+
+                                                               SELECT i.symbol
+                                                               FROM automation_strategies a
+                                                               JOIN instruments i ON i.symbol = a.symbol
+                                                               WHERE i.is_tradable = true
+                                                                       AND a.enabled = true
                                                 ) s
                                                 ORDER BY s.symbol
                                                 """)

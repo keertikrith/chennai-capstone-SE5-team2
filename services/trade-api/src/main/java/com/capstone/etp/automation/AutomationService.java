@@ -20,7 +20,9 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.Executor;
 
@@ -48,17 +50,25 @@ public class AutomationService implements QuoteObserver {
     private final TradeApiClient tradeApi;
     private final Executor executor;
     private final Clock clock;
+    private final AutomationHistorySource historySource;
     private final PriceHistory history;
     private volatile Map<String, List<Active>> bySymbol = Map.of();
     private final Deque<AutomationResult> recent = new ConcurrentLinkedDeque<>();
+    private final Map<String, Instant> lastHistoricalEvaluation = new ConcurrentHashMap<>();
 
     public AutomationService(AutomationProperties properties, AutomationMapper store, TradeApiClient tradeApi,
                              Executor executor, Clock clock) {
+        this(properties, store, tradeApi, executor, clock, AutomationHistorySource.NONE);
+    }
+
+    public AutomationService(AutomationProperties properties, AutomationMapper store, TradeApiClient tradeApi,
+                             Executor executor, Clock clock, AutomationHistorySource historySource) {
         this.properties = properties;
         this.store = store;
         this.tradeApi = tradeApi;
         this.executor = executor;
         this.clock = clock;
+        this.historySource = historySource == null ? AutomationHistorySource.NONE : historySource;
         this.history = new PriceHistory(Math.max(properties.getHistorySize(), 10));
         reload();
     }
@@ -86,6 +96,12 @@ public class AutomationService implements QuoteObserver {
         for (StrategyDefinition definition : definitions) {
             register(fresh, definition, properties.getHistorySize());
         }
+        warmHistory(fresh);
+        Set<String> activeIds = fresh.values().stream()
+                .flatMap(List::stream)
+                .map(active -> active.definition().getId())
+                .collect(java.util.stream.Collectors.toSet());
+        lastHistoricalEvaluation.keySet().retainAll(activeIds);
         bySymbol = fresh;
         log.info("[AUTOMATION] strategies running={}", fresh.values().stream().mapToInt(List::size).sum());
     }
@@ -123,6 +139,62 @@ public class AutomationService implements QuoteObserver {
         target.computeIfAbsent(symbol, key -> new ArrayList<>()).add(new Active(definition, symbol, strategy));
         log.info("[AUTOMATION] strategy active id={} strategy={} symbol={} accountId={} quantity={}",
                 id, strategy.name(), symbol, definition.getAccountId(), definition.getQuantity());
+    }
+
+    private void warmHistory(Map<String, List<Active>> activeBySymbol) {
+        for (Map.Entry<String, List<Active>> entry : activeBySymbol.entrySet()) {
+            String symbol = entry.getKey();
+            int required = entry.getValue().stream().mapToInt(active -> active.strategy().requiredObservations()).max().orElse(0);
+            if (required <= 0) {
+                continue;
+            }
+            int collected = history.size(symbol);
+            if (collected >= required) {
+                continue;
+            }
+            int missing = required - collected;
+            List<AutomationHistorySource.Observation> observations = historySource.latest(symbol, missing);
+            if (observations == null || observations.isEmpty()) {
+                continue;
+            }
+            int added = 0;
+            AutomationHistorySource.Observation newestAdded = null;
+            for (AutomationHistorySource.Observation observation : observations) {
+                if (observation == null || observation.price() == null || observation.price().signum() <= 0) {
+                    continue;
+                }
+                if (history.add(symbol, observation.price(), observation.asOf())) {
+                    added++;
+                    newestAdded = observation;
+                }
+            }
+            if (added > 0) {
+                log.info("[AUTOMATION] history primed symbol={} added={} collected={} required={}",
+                        symbol, added, Math.min(history.size(symbol), required), required);
+                evaluateFromHistorical(entry.getValue(), symbol, newestAdded, required);
+            }
+        }
+    }
+
+    private void evaluateFromHistorical(List<Active> activeStrategies, String symbol,
+                                        AutomationHistorySource.Observation newestAdded, int required) {
+        if (newestAdded == null || newestAdded.asOf() == null || history.size(symbol) < required) {
+            return;
+        }
+        List<BigDecimal> prices = history.snapshot(symbol);
+        MarketQuote historicalQuote = MarketQuote.builder()
+                .symbol(symbol)
+                .price(newestAdded.price())
+                .quoteAsOf(newestAdded.asOf())
+                .build();
+        for (Active active : activeStrategies) {
+            Instant lastChecked = lastHistoricalEvaluation.get(active.definition().getId());
+            if (lastChecked != null && !newestAdded.asOf().isAfter(lastChecked)) {
+                continue;
+            }
+            evaluate(active, prices, historicalQuote);
+            lastHistoricalEvaluation.put(active.definition().getId(), newestAdded.asOf());
+        }
     }
 
     @Override

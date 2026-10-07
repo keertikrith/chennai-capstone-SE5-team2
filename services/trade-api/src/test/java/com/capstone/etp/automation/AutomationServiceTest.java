@@ -55,12 +55,16 @@ class AutomationServiceTest {
     }
 
     private AutomationService service(StrategyDefinition... definitions) {
+        return service(AutomationHistorySource.NONE, definitions);
+    }
+
+    private AutomationService service(AutomationHistorySource historySource, StrategyDefinition... definitions) {
         AutomationProperties properties = new AutomationProperties();
         AutomationMapper store = mock(AutomationMapper.class);
         // the store returns only strategies that are switched on, as the real query does
         when(store.findEnabled()).thenReturn(java.util.Arrays.stream(definitions).filter(StrategyDefinition::isEnabled).toList());
         // A direct executor: the order is submitted before onQuote returns, so the tests can look straight away.
-        return new AutomationService(properties, store, tradeApi, Runnable::run, Clock.fixed(T0, ZoneOffset.UTC));
+        return new AutomationService(properties, store, tradeApi, Runnable::run, Clock.fixed(T0, ZoneOffset.UTC), historySource);
     }
 
     private MarketQuote quote(String symbol, double price) {
@@ -131,6 +135,36 @@ class AutomationServiceTest {
 
         verifyNoInteractions(tradeApi);
         assertTrue(service.recentResults().isEmpty());
+    }
+
+    @Test
+    void historicalWarmUpLetsTheNextLiveTickTriggerWithoutWaitingForAllTicksFromScratch() {
+        AutomationHistorySource historySource = (symbol, count) -> List.of(
+                new AutomationHistorySource.Observation(BigDecimal.TEN, T0.minusSeconds(5)),
+                new AutomationHistorySource.Observation(BigDecimal.TEN, T0.minusSeconds(4)),
+                new AutomationHistorySource.Observation(BigDecimal.TEN, T0.minusSeconds(3)),
+                new AutomationHistorySource.Observation(BigDecimal.TEN, T0.minusSeconds(2))
+        );
+        AutomationService service = service(historySource, ma("aapl-ma", "AAPL", 7, true));
+
+        service.onQuote(quote("AAPL", 12));
+
+        verify(tradeApi, times(1)).submit(any());
+    }
+
+    @Test
+    void historicalWarmUpCanTriggerAndPlaceTheOrderWithoutWaitingForANewLiveTick() {
+        AutomationHistorySource historySource = (symbol, count) -> List.of(
+                new AutomationHistorySource.Observation(BigDecimal.TEN, T0.minusSeconds(5)),
+                new AutomationHistorySource.Observation(BigDecimal.TEN, T0.minusSeconds(4)),
+                new AutomationHistorySource.Observation(BigDecimal.TEN, T0.minusSeconds(3)),
+                new AutomationHistorySource.Observation(BigDecimal.TEN, T0.minusSeconds(2)),
+                new AutomationHistorySource.Observation(new BigDecimal("12"), T0.minusSeconds(1))
+        );
+
+        service(historySource, ma("aapl-ma", "AAPL", 7, true));
+
+        verify(tradeApi, times(1)).submit(any());
     }
 
     @Test

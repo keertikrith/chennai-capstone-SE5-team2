@@ -29,7 +29,8 @@ market-data topic ──> MarketDataConsumer ──> QuoteObserver = AutomationS
 1. **Run the migration** `databases/postgreSQL/migrations/005_automation.sql` once.
 2. Open **Automation**, press **New strategy**, pick the rule, instrument, quantity and parameters. It is created **off**.
 3. Press the switch. A confirmation says the strategy will place **real orders**; the **Switch on** button stays disabled until the box is ticked.
-4. The strategy collects live prices first ("Collecting prices: 12 of 51"). It cannot act until it has them all. History starts empty and fills from live quotes, so a long average takes a while; quotes must be arriving on `market-data`.
+4. The strategy uses recent daily candles first, then keeps collecting live prices ("Collecting prices: 12 of 51"). Once enough observations exist, it is evaluated immediately on the newest observation (including warm-up data), then on each new live quote. If candle warm-up is unavailable, it continues from live quotes only; quotes must be arriving on `market-data`.
+   The market-data poller includes symbols from watchlists, holdings, NEW orders, and enabled automation strategies.
 5. The page shows what it did: Triggered, Order sent, Rejected, Failed.
 6. Switch it off, or remove it, at any time. An order already sent cannot be taken back.
 
@@ -95,7 +96,7 @@ There is no login token to paste. `AutomationTokenIssuer` signs a **one-minute**
 - A quote that is not newer than the last one stored for the symbol is not a new observation, so a quote delivered twice is one tick.
 - Malformed events (no symbol, no or non-positive price) are ignored with a warning.
 - If the database cannot be read on a reload, the strategies already running keep running.
-- History is bounded and kept only for symbols that have a running strategy.
+- History is bounded and kept only for symbols that have a running strategy, with best-effort candle warm-up before live ticks continue it.
 
 ## Outcomes
 
