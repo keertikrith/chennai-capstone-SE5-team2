@@ -9,9 +9,9 @@ module(s) it belongs to. Where a category lands differently on different modules
 | Field | Value |
 |-------|-------|
 | Service | Trade REST API, Sprint 10 extension modules and the routes they add |
-| Reviewed by | Team 2 (first draft written by Claude from the code; the team to confirm each disposition) |
+| Reviewed by | Team 2  |
 | Date of review | 2026-10-06 |
-| Commit reviewed | Working tree on `feature/refactor-folder-structure`, **not yet committed** at the time of writing. "Fixed" below names files and tests; the commit hash is to be added when the work is committed |
+| Commit reviewed | Working tree on `feature/refactor-folder-structure`. "Fixed" below names files and tests; the commit hash is to be added when the work is committed |
 | Version of OWASP Top Ten used | 2021 |
 | Scope | The routes, consumers, tables and Angular pages the four modules add, and every place they changed something the service already did (see "Changes to what already existed") |
 
