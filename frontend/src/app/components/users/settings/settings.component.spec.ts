@@ -1,5 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { MascotService } from '../../../core/mascot/mascot.service';
@@ -51,6 +52,7 @@ describe('SettingsComponent', () => {
     await TestBed.configureTestingModule({
       imports: [SettingsComponent],
       providers: [
+        provideRouter([]),
         { provide: PreferencesService, useValue: { get, update } },
         { provide: AccountService, useValue: { getAccount } },
         { provide: AccountContextService, useValue: { getTokenAccountId: () => 1, getAllowedAccountIds: () => [1] } },
