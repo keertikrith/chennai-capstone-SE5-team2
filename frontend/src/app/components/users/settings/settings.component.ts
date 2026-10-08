@@ -1,5 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { AnimationName, MASCOT_LABEL, MASCOT_TYPES, MascotType } from '../../../core/mascot/pixel-mascot';
 import { MascotService } from '../../../core/mascot/mascot.service';
 import {
@@ -38,7 +39,7 @@ export function maskAccountId(id: number): string {
 @Component({
   selector: 'app-settings',
   standalone: true,
-  imports: [IconComponent, MascotComponent],
+  imports: [IconComponent, MascotComponent, RouterLink],
   templateUrl: './settings.component.html',
   styleUrl: './settings.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush

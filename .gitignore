@@ -9,6 +9,7 @@ Thumbs.db
 *.log
 package-lock.json
 !services/auth_service/package-lock.json
+!services/mcp-server/package-lock.json
 node_modules
 .env
 

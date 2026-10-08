@@ -1,0 +1,147 @@
+<section class="page ai-access" data-testid="ai-access-page">
+  <header class="head">
+    <div>
+      <h1>AI assistants</h1>
+      <p class="muted">
+        Let Claude or ChatGPT use your account. You decide what it may do, and you can cut it off any time.
+        <a routerLink="/settings">Back to Settings</a>
+      </p>
+    </div>
+    <button type="button" class="primary" (click)="openForm()" data-testid="ai-create-open">
+      <app-icon name="plus" [size]="18" /> New link
+    </button>
+  </header>
+
+  @if (newLink(); as link) {
+    <article class="card section link-card" role="status" data-testid="ai-new-link">
+      <h2>Your private link</h2>
+      <p class="warn">
+        Copy it now. It is shown only once, and anyone who has it can act within the limits you set.
+        Do not share it or post it anywhere.
+      </p>
+      <div class="link-row">
+        <input type="text" class="mono" readonly [value]="link" aria-label="Your private link" (focus)="$any($event.target).select()"
+               data-testid="ai-link-value" />
+        <button type="button" class="primary" (click)="copyLink()" data-testid="ai-link-copy">
+          <app-icon [name]="copied() ? 'check' : 'copy'" [size]="16" /> {{ copied() ? 'Copied' : 'Copy' }}
+        </button>
+      </div>
+      <ol class="steps">
+        <li><strong>Claude</strong>: open its connectors settings, add a custom connector and paste the link.</li>
+        <li><strong>ChatGPT</strong>: turn on developer mode, add a connector, paste the link and choose no authentication.</li>
+        <li>Then ask it: "What is my balance?" or "Alert me when AAPL goes above 200".</li>
+      </ol>
+      <div><button type="button" class="secondary" (click)="dismissLink()" data-testid="ai-link-dismiss">I have copied it</button></div>
+    </article>
+  }
+
+  @if (formOpen()) {
+    <article class="card section" data-testid="ai-form">
+      <h2>New link</h2>
+      <label class="field">
+        <span>Name</span>
+        <input type="text" maxlength="60" placeholder="My Claude" [value]="label()" (input)="label.set($any($event.target).value)"
+               data-testid="ai-label" />
+      </label>
+
+      <fieldset class="perms">
+        <legend>What it may do</legend>
+        <label class="check"><input type="checkbox" checked disabled /> <span>Read your balance, holdings, orders and prices <small class="muted">(always)</small></span></label>
+        <label class="check"><input type="checkbox" [checked]="allowAlerts()" (change)="allowAlerts.set(!allowAlerts())" data-testid="ai-allow-alerts" /> <span>Create and delete price alerts</span></label>
+        <label class="check"><input type="checkbox" [checked]="allowTrade()" (change)="allowTrade.set(!allowTrade())" data-testid="ai-allow-trade" /> <span>Place orders <small class="muted">(you confirm each one in the chat)</small></span></label>
+      </fieldset>
+
+      @if (allowTrade()) {
+        <div class="limits" data-testid="ai-limits">
+          <label class="field">
+            <span>Largest single order</span>
+            <input type="number" min="1" [value]="maxOrderValue()" (input)="maxOrderValue.set(numberValue($event, 5000))" data-testid="ai-max-value" />
+          </label>
+          <label class="field">
+            <span>Most orders per day</span>
+            <input type="number" min="1" max="50" [value]="maxOrdersPerDay()" (input)="maxOrdersPerDay.set(numberValue($event, 3))" data-testid="ai-max-orders" />
+          </label>
+        </div>
+      }
+
+      <label class="field">
+        <span>Stops working after (days)</span>
+        <input type="number" min="1" max="90" [value]="expiresInDays()" (input)="expiresInDays.set(numberValue($event, 30))" data-testid="ai-expiry" />
+      </label>
+
+      @if (formError()) {
+        <div class="banner error" role="alert" data-testid="ai-form-error">{{ formError() }}</div>
+      }
+      <div class="actions">
+        <button type="button" class="primary" [disabled]="creating()" (click)="create()" data-testid="ai-create">
+          {{ creating() ? 'Creating…' : 'Create link' }}
+        </button>
+        <button type="button" class="secondary" (click)="closeForm()">Cancel</button>
+      </div>
+    </article>
+  }
+
+  @if (loading()) {
+    <article class="card" aria-busy="true" aria-label="Loading links">
+      <span class="skeleton short"></span><span class="skeleton"></span>
+    </article>
+  } @else if (loadError()) {
+    <div class="banner error" role="alert" data-testid="ai-load-error">{{ loadError() }}</div>
+    <div><button type="button" class="secondary" (click)="load()">Try again</button></div>
+  } @else if (connectors().length === 0) {
+    <article class="card section" data-testid="ai-empty">
+      <h2>No assistants connected</h2>
+      <p class="muted">Make a link, paste it into Claude or ChatGPT, and ask about your account in plain words.</p>
+    </article>
+  } @else {
+    <article class="card section" data-testid="ai-links">
+      <h2>Your links</h2>
+      <ul class="links">
+        @for (c of connectors(); track c.id) {
+          <li [class.off]="c.status !== 'ACTIVE'" [attr.data-testid]="'ai-link-' + c.id">
+            <div class="grow">
+              <div class="title">
+                <strong>{{ c.label }}</strong>
+                <span class="pill" [class.live]="c.status === 'ACTIVE'">{{ c.status.toLowerCase() }}</span>
+              </div>
+              <p class="muted small">
+                Reads
+                @if (canAlert(c)) { &middot; alerts }
+                @if (canTrade(c)) { &middot; orders up to {{ c.maxOrderValue }} ({{ c.maxOrdersPerDay }}/day) }
+                &middot; expires {{ c.expiresAt | date: 'mediumDate' }}
+                &middot; {{ c.lastUsedAt ? 'last used ' + (c.lastUsedAt | date: 'medium') : 'never used' }}
+              </p>
+            </div>
+            @if (c.status === 'ACTIVE') {
+              <button type="button" class="ghost danger" [disabled]="revoking() === c.id" (click)="revoke(c)" [attr.data-testid]="'ai-revoke-' + c.id">
+                <app-icon name="trash" [size]="16" /> Revoke
+              </button>
+            }
+          </li>
+        }
+      </ul>
+    </article>
+
+    <article class="card section" data-testid="ai-activity">
+      <h2>Recent activity</h2>
+      @if (activity().length === 0) {
+        <p class="muted">Nothing yet.</p>
+      } @else {
+        <ul class="activity">
+          @for (a of activity(); track a.id) {
+            <li>
+              <span class="mono">{{ a.tool }}</span>
+              <span class="pill" [class.live]="a.outcome === 'ok' || a.outcome === 'placed'">{{ a.outcome }}</span>
+              <span class="muted small">{{ a.connectorLabel ?? 'removed link' }} &middot; {{ a.createdAt | date: 'medium' }}@if (a.detail) { &middot; {{ a.detail }} }</span>
+            </li>
+          }
+        </ul>
+      }
+    </article>
+  }
+
+  <p class="muted small">
+    Orders are never placed in one step: the assistant shows you the order and you say yes in the chat. You will
+    get the usual order e-mail afterwards. Prices can be delayed. This is not financial advice.
+  </p>
+</section>

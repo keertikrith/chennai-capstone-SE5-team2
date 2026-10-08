@@ -1,0 +1,19 @@
+{
+  "name": "etp-mcp-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "MCP server that lets an AI assistant (Claude, ChatGPT) use a customer's trading account through a link they create in Settings.",
+  "type": "module",
+  "main": "src/main.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/main.js",
+    "test": "node --test \"test/**/*.test.js\""
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.1",
+    "zod": "^3.25.76"
+  }
+}

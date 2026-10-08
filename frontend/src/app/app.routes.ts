@@ -123,6 +123,13 @@ export const routes: Routes = [
       )
   },
   {
+    path: 'settings/ai-access',
+    title: 'AI assistants',
+    canActivate: [authGuard, customerGuard],
+    loadComponent: () =>
+      import('./components/users/ai-access/ai-access.component').then((m) => m.AiAccessComponent)
+  },
+  {
     path: 'settings',
     title: 'Settings',
     canActivate: [authGuard, customerGuard],

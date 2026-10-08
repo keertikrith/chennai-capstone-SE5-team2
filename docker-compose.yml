@@ -20,6 +20,8 @@ services:
       # Automated trading: the strategies customers set up
       - ./databases/postgreSQL/migrations/005_automation.sql:/docker-entrypoint-initdb.d/007_automation.sql:ro
       - ./databases/postgreSQL/migrations/006_automation_history.sql:/docker-entrypoint-initdb.d/008_automation_history.sql:ro
+      # AI assistant (MCP) access: connector links, prepared orders, audit trail
+      - ./databases/postgreSQL/migrations/007_mcp_access.sql:/docker-entrypoint-initdb.d/009_mcp_access.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-springboot_db}"]
       interval: 10s
@@ -120,6 +122,10 @@ services:
       # git-ignored); the browser never sees it. Without it the assistant still answers from account data.
       # Automated trading demo button (places a REAL order from a scripted price path). Off unless set to true.
       AUTOMATION_SIMULATION: ${AUTOMATION_SIMULATION:-false}
+      # AI assistant (MCP) access. The service key is shared with the mcp-server container and gates /internal/mcp/**;
+      # empty means that API refuses everything. MCP_PUBLIC_URL is where customers reach the mcp-server (https in production).
+      MCP_SERVICE_KEY: ${MCP_SERVICE_KEY:-}
+      MCP_PUBLIC_URL: ${MCP_PUBLIC_URL:-http://localhost:8090}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.1-flash-lite}
     ports:
@@ -137,6 +143,35 @@ services:
       timeout: 5s
       retries: 8
       start_period: 30s
+    networks:
+      - trading-net
+
+  # Lets an AI assistant (Claude, ChatGPT) use a customer's account through a link they make in Settings.
+  # It holds no business rules and no database access: everything goes through the Trade API.
+  mcp-server:
+    profiles: ["platform"]
+    build:
+      context: ./services/mcp-server
+      dockerfile: Dockerfile
+    environment:
+      PORT: 8090
+      TRADE_API_URL: http://backend:8084
+      # Required: the server exits at start-up with a clear message when this is empty.
+      MCP_SERVICE_KEY: ${MCP_SERVICE_KEY:-}
+      # Origins allowed to call the link from a browser. Assistants' servers send none, so leave empty.
+      MCP_ALLOWED_ORIGINS: ${MCP_ALLOWED_ORIGINS:-}
+      MCP_RATE_PER_MINUTE: ${MCP_RATE_PER_MINUTE:-60}
+    ports:
+      - "${MCP_PORT:-8090}:8090"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8090/health"]
+      interval: 15s
+      timeout: 3s
+      retries: 8
+      start_period: 10s
     networks:
       - trading-net
 
