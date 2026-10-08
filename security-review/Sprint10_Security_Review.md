@@ -209,3 +209,31 @@ e-mail templates, and CSV/Excel/PDF export.
 Outstanding: the welcome e-mail template exists (`email/welcome.html`, `renderWelcome`) but the sign-up flow lives
 in the auth service and does not call it yet; SMS still exists on the server for accounts that stored it (the UI no
 longer offers it).
+
+---
+
+## Addendum (2026-10-08): AI assistant (MCP) access
+
+New entry points, added by the MCP work (decision 0020). Written by Claude from the code; the team to confirm each disposition.
+
+| Entry point | Authenticated by | Authorised by |
+|---|---|---|
+| `POST, GET, DELETE /api/v1/accounts/{id}/mcp/connectors[/{cid}]`, `GET .../mcp/audit` | bearer token | `ensureOwnAccount(id)`; SQL keyed on `(id, account_id)` |
+| `POST /internal/mcp/resolve`, `/internal/mcp/connectors/{cid}/...` | shared service key `X-Mcp-Service-Key`, compared as SHA-256 digests; refused when no key is configured | the connector must be active; every order step re-checks permission and limits |
+| `POST /t/<secret>/mcp` on the MCP server | the secret in the path, resolved by the Trade API | tools offered only for the link's permissions; the Trade API checks again on every order step |
+
+| Threat | Category | Mitigation | Evidence |
+|---|---|---|---|
+| A leaked link is a working credential | A07, A01 | 256-bit secret shown once; only SHA-256 stored; expiry (default 30 days, max 90); revoke takes effect on the next order step; permissions and limits cap the loss. **Residual risk accepted:** until revoked, a leaked link can do what its permissions allow within its limits | `McpChainIT.aCustomerMakesAListsAndRevokesALink...`, `...resolveGivesTheAccount...AndStopsAfterRevocation` |
+| The secret ends up in a log or the audit trail | A09 | The MCP server logs the route as `/t/[link]/mcp` only; the audit trail records tool, outcome and a short detail | `server.test.js` "never logs the secret", `McpChainIT.everyStepIsAudited...` |
+| Prompt injection or a confused model places an order | A04 | Two steps: `prepare_order` trades nothing; `confirm_order` needs the id of a stored, unexpired (2 min), single-use order; the TRADE permission is off by default; per-order and per-day limits are enforced in the Trade API, not the MCP server. **Residual risk accepted:** confirmation is in the chat (the product decision), so a model that calls `confirm_order` unprompted is stopped only by the assistant's tool-approval prompt and the limits | `McpOrderServiceTest`, `McpChainIT.thePerOrderAndDailyLimits...`, `...anExpiredPreparedOrder...` |
+| A prepared order is confirmed twice or by another link | A04, A01 | One guarded `UPDATE ... WHERE status='PENDING' AND expires_at > now()`; the row id is the order's idempotency key; the row is looked up by `(id, connector_id)` | `McpChainIT.prepareDoesNotTrade...ExactlyOnce`, `...aPreparedOrderBelongsToItsLinkAlone` |
+| Internal API reached by a customer or the internet | A01, A05 | Needs the service key; a customer's login token is refused; empty key disables it. **Deploy note:** block `/internal/` at the public proxy | `McpChainIT.theInternalDoorRefusesAnything...` |
+| A web page drives a customer's link through their browser (DNS rebinding) | A05 | Any request with an `Origin` header is refused unless listed in `MCP_ALLOWED_ORIGINS`; the server answers only POST | `server.test.js` "refuses GET, other paths and any browser Origin" |
+| Runaway assistant loop or flooding | A04 | Per-link rate limit (60 per minute), body limit 64 KB, at most 5 waiting prepared orders per link, at most 5 active links per account | `server.test.js`, `McpChainIT.anAccountCannotHold...` |
+| Another customer reads or revokes my links | A01 | `ensureOwnAccount`; revoke is keyed on `(id, account_id)` | `McpChainIT.anotherCustomerCannot...` |
+| The assistant gets the customer's real login token | A07 | It never does: the MCP server receives a one-minute token for the one account, signed by the Trade API | `McpChainIT.resolveGives...` (token accepted for account 1, refused for account 5) |
+
+Outstanding: the secret travels in the URL, so HTTPS is mandatory in production and any proxy in front must not log paths; the
+rate limiter is in memory (per process); no alert is raised on repeated failed resolves; ChatGPT and Claude behaviour with
+"no authentication" connectors that write has not been tested against the live products.
