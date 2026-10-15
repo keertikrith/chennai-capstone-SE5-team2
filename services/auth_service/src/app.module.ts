@@ -71,7 +71,7 @@ import { RefreshToken } from './auth/entity/refresh-token.entity';
 
                 database:
                     config.get<string>(
-                        'database.database',
+                        'database.name',
                     ),
 
                 // One database, two schemas: the auth service works only in its own.
