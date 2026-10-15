@@ -10,9 +10,9 @@ pipeline {
 
   parameters {
     string(name: 'AWS_REGION', defaultValue: 'ap-south-1', description: 'AWS region')
-    string(name: 'RDS_HOST', defaultValue: 'database-1.c52m040i8bb8.ap-south-1.rds.amazonaws.com', description: 'RDS endpoint')
+    string(name: 'RDS_HOST', defaultValue: 'database-1.cj064ygwm5w7.ap-south-1.rds.amazonaws.com', description: 'RDS endpoint')
     string(name: 'RDS_PORT', defaultValue: '5432', description: 'RDS PostgreSQL port')
-    string(name: 'RDS_DATABASE', defaultValue: 'trading_system_db', description: 'RDS database name')
+    string(name: 'RDS_DATABASE', defaultValue: 'postgres', description: 'RDS database name')
     string(name: 'RDS_USER', defaultValue: 'postgres', description: 'RDS database user')
     string(name: 'IMAGE_TAG', defaultValue: '', description: 'Required ECR tag produced by JenkinsfileCI')
     string(name: 'K8S_OVERLAY', defaultValue: 'k8s/overlays/four-lb', description: 'Kustomize overlay')
@@ -162,7 +162,7 @@ DB_PASSWORD=password_n3u3d4!
 # at least 32 bytes:  node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
 JWT_SECRET=c2VjdXJpdHktc2VjcmV0LWZvci1ldHAtY2Fwc3RvbmUtdGVhbTItMjAyNg==
 
-FAUXNANCE_API_KEY=fnx_dev_7mqYhZ6WpaTlmzQm5IEzuf6x3D1nHqf4
+FAUXNANCE_API_KEY=fnx_dev_cUWEYnt5jvqgQ9CblCurd9qHVcjj8uxX
 
 GEMINI_API_KEY=AQ.Ab8RN6Jink2dQ5knNHNCf8mOd352T2xFoO6N4To_DM6cr2sH6g
 
