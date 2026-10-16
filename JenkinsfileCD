@@ -186,6 +186,7 @@ pipeline {
             -o jsonpath='{range .items[?(@.spec.type=="LoadBalancer")]}{.metadata.name}{"\\t"}{.status.loadBalancer.ingress[0].hostname}{"\\n"}{end}'
         '''
       }
+    }
   }
 
    post {
@@ -196,5 +197,4 @@ pipeline {
       '''
     }
   }
-}
 }
