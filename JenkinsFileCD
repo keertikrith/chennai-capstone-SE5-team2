@@ -26,6 +26,7 @@ pipeline {
     ORDER_REPO = 'etp-order-service'
     EXECUTOR_REPO = 'etp-executor-service'
     FRONTEND_REPO = 'etp-frontend'
+    SECRETS_CREDENTIAL_ID = 'capstone-secrets'
   }
 
   stages {
@@ -152,38 +153,48 @@ pipeline {
 
     stage('Inject secrets and deploy selected images') {
       steps {
+        withCredentials([file(credentialsId: env.SECRETS_CREDENTIAL_ID, variable: 'SECRETS_FILE')]) {
+          sh '''#!/usr/bin/env bash
+            set -euo pipefail
+            install -m 600 "$SECRETS_FILE" k8s/base/secrets.env
+            for key in DB_PASSWORD JWT_SECRET FAUXNANCE_API_KEY GEMINI_API_KEY SMTP_USER SMTP_PASS; do
+              grep -q "^$key=." k8s/base/secrets.env || { echo "secrets.env is missing a value for $key" >&2; exit 1; }
+            done
+          '''
+        }
         sh '''#!/usr/bin/env bash
           set -euo pipefail
-          # Secrets are hardcoded here; no Jenkins credential is used.
-          cat > k8s/base/secrets.env <<'SECRETS_EOF'
-# SECRETS. Copy to secrets.env (git-ignored) and fill in. Copied to base/secrets.env and turned into the Secret etp-secrets (guide 7.2).
-DB_PASSWORD=password_n3u3d4!
-JWT_SECRET=c2VjdXJpdHktc2VjcmV0LWZvci1ldHAtY2Fwc3RvbmUtdGVhbTItMjAyNg==
-FAUXNANCE_API_KEY=fnx_dev_cUWEYnt5jvqgQ9CblCurd9qHVcjj8uxX
-GEMINI_API_KEY=AQ.Ab8RN6Jink2dQ5knNHNCf8mOd352T2xFoO6N4To_DM6cr2sH6g
-SMTP_USER=quorum.information@gmail.com
-SMTP_PASS=lctafmtezmfvoopx
-SECRETS_EOF
+          sed -i -E "s#(newName: ).*/(etp-[a-z-]+)#\\1$REGISTRY/\\2#; s#(newTag: ).*#\\1\\"$IMAGE_TAG\\"#" k8s/base/kustomization.yaml
+          test "$(grep -c "newTag: \\"$IMAGE_TAG\\"" k8s/base/kustomization.yaml)" -eq 4
+          grep -E 'newName:|newTag:' k8s/base/kustomization.yaml
+
+          # A finished Job is immutable; topics are created with --if-not-exists, so re-running it is safe.
+          kubectl -n "$K8S_NAMESPACE" delete job kafka-topics --ignore-not-found
+
           kubectl apply --dry-run=server -k "$K8S_OVERLAY"
           kubectl apply -k "$K8S_OVERLAY"
-          kubectl -n "$K8S_NAMESPACE" set image deployment/auth-service auth-service="$REGISTRY/$AUTH_REPO:$IMAGE_TAG"
-          kubectl -n "$K8S_NAMESPACE" set image deployment/order-service order-service="$REGISTRY/$ORDER_REPO:$IMAGE_TAG"
-          kubectl -n "$K8S_NAMESPACE" set image deployment/executor-service executor-service="$REGISTRY/$EXECUTOR_REPO:$IMAGE_TAG"
-          kubectl -n "$K8S_NAMESPACE" set image deployment/frontend frontend="$REGISTRY/$FRONTEND_REPO:$IMAGE_TAG"
+
           kubectl -n "$K8S_NAMESPACE" rollout status deployment/auth-service --timeout=180s
-          kubectl -n "$K8S_NAMESPACE" rollout status deployment/order-service --timeout=180s
+          kubectl -n "$K8S_NAMESPACE" rollout status deployment/order-service --timeout=300s
           kubectl -n "$K8S_NAMESPACE" rollout status deployment/executor-service --timeout=180s
           kubectl -n "$K8S_NAMESPACE" rollout status deployment/frontend --timeout=180s
           kubectl -n "$K8S_NAMESPACE" get pods -o wide
           kubectl -n "$K8S_NAMESPACE" get svc
+
+          echo "Load balancer hostnames (keep $K8S_OVERLAY/urls.env in sync with these):"
+          kubectl -n "$K8S_NAMESPACE" get svc \\
+            -o jsonpath='{range .items[?(@.spec.type=="LoadBalancer")]}{.metadata.name}{"\\t"}{.status.loadBalancer.ingress[0].hostname}{"\\n"}{end}'
         '''
       }
     }
   }
 
-  post {
+   post {
     always {
-      sh 'rm -f k8s/base/secrets.env'
+      sh '''#!/usr/bin/env bash
+        rm -f k8s/base/secrets.env
+        kubectl -n "${K8S_NAMESPACE:-etp}" delete pod jenkins-rds-test --ignore-not-found >/dev/null 2>&1 || true
+      '''
     }
   }
 }
