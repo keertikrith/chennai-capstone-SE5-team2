@@ -188,9 +188,12 @@ pipeline {
       }
   }
 
-  post {
+   post {
     always {
-      sh 'rm -f k8s/base/secrets.env'
+      sh '''#!/usr/bin/env bash
+        rm -f k8s/base/secrets.env
+        kubectl -n "${K8S_NAMESPACE:-etp}" delete pod jenkins-rds-test --ignore-not-found >/dev/null 2>&1 || true
+      '''
     }
   }
 }
